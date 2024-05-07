@@ -1,0 +1,31 @@
+- name: Check if netboot exists first 
+  ansible.builtin.stat:
+    path: "{{ pi_pxe_server_working_dir }}/netboot.tar.gz"
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: netboot_tar
+
+- name: Download netboot installer
+  ansible.builtin.get_url:
+    url: "{{ pi_pxe_server_tar }}"
+    dest: "{{ pi_pxe_server_working_dir }}"
+    mode: "0644"
+    checksum: "{{ pi_pxe_server_tar_checksum }}"
+  when: not netboot_tar.stat.exists
+
+
+- name: Check if netboot_tar already unarchived
+  ansible.builtin.stat:
+    path: "{{ pi_pxe_server_working_dir }}/splash.png"
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: netboot_open_artifact
+
+- name: Unarchive the netboot installer
+  ansible.builtin.unarchive:
+    src: "{{ pi_pxe_server_working_dir }}/netboot.tar.gz"
+    dest: "{{ pi_pxe_server_working_dir }}"
+    remote_src: true
+  when: not netboot_open_artifact.stat.exists

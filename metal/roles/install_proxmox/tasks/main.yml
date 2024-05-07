@@ -1,0 +1,10 @@
+
+- name: Update /etc/hosts file
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    regexp: "^127.0.0.1\\s+{{ inventory_hostname }}(\\s|$)"
+    state: present
+    line: "{{ hostvars[inventory_hostname]['ansible_host'] }} {{ inventory_hostname }}"
+
+- name: Install Proxmox
+  ansible.builtin.include_task: install_proxmox.yml

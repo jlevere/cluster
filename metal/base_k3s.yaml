@@ -1,0 +1,18 @@
+- name: K3s Install
+  hosts: cluster
+  become: true
+  gather_facts: true
+  pre_tasks:
+    - name: Set control node
+      ansible.builtin.set_fact:
+        k3s_control_node: true
+      when: inventory_hostname in ['machine0']
+
+  tasks:
+    - name: Install K3s
+      ansible.builtin.include_role:
+        name: xanmanning.k3s
+        public: true
+      vars:
+        k3s_state: installed
+        k3s_become: true

@@ -1,0 +1,20 @@
+services:
+  dnsmasq:
+    build: ./dnsmasq
+    volumes:
+      - ./configs/dnsmasq.conf:/etc/dnsmasq.conf
+      - ./debian-installer/amd64//initrd.gz:/tftp/initrd.gz
+      - ./debian-installer/amd64/linux:/tftp/linux
+      - ./debian-installer:/tftp/debian-installer/
+      - ./debian-installer/amd64/grubx64.efi:/tftp/grubx64.efi
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+  http:
+    build: ./http
+    network_mode: host
+    volumes:
+      #- ./data/os:/usr/share/nginx/html/os
+      - ./configs/:/usr/share/nginx/html/configs
+    environment:
+      NGINX_PORT: 80

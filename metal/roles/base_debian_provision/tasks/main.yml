@@ -1,0 +1,29 @@
+
+- name: Setup hostnames
+  ansible.builtin.lineinfile:
+    dest: /etc/hosts
+    regexp: '.* {{ item }}$'
+    line: "{{ hostvars[item]['ansible_host'] }} {{ item }}"
+    state: present
+  loop: "{{ groups['cluster'] }}"
+
+- name: Install isenkram autoinstal
+  ansible.builtin.apt:
+    name: isenkram-cli
+    state: present
+  register: isenkram_install_result
+
+- name: Install firmware
+  ansible.builtin.command:
+    cmd: isenkram-autoinstall-firmware
+  when: isenkram_install_result.changed
+
+- name: Reboot for firmware
+  ansible.builtin.reboot:
+  when: isenkram_install_result.changed
+
+- name: Disable password login
+  ansible.builtin.lineinfile: 
+    dest: "/etc/ssh/sshd_config" 
+    regexp: "^(#\\s*)?PasswordAuthentication\\s" 
+    line: "PasswordAuthentication no"

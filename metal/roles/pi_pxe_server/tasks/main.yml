@@ -1,0 +1,75 @@
+- name: Create working dir
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ pi_pxe_server_working_dir }}"
+    - "{{ pi_pxe_server_working_dir }}/configs"
+    - "{{ pi_pxe_server_working_dir }}/dnsmasq"
+    - "{{ pi_pxe_server_working_dir }}/http"
+
+- name: Copy in docker configs
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "{{ pi_pxe_server_working_dir }}/{{ item }}"
+    mode: "0644"
+  loop:
+    - "dnsmasq/Dockerfile"
+    - "http/Dockerfile"
+    - "docker-compose.yaml"
+
+- name: Set up netboot
+  ansible.builtin.include_tasks: netboot.yaml
+
+- name: Template Dnsmasq config
+  ansible.builtin.template:
+    src: dnsmasq.conf.j2
+    dest: "{{ pi_pxe_server_working_dir }}/configs/dnsmasq.conf"
+    mode: "0644"
+
+- name: Gen grub config
+  ansible.builtin.template:
+    src: grub.cfg.j2
+    dest: "{{ pi_pxe_server_working_dir }}/configs/grub.cfg"
+    mode: "0644"
+
+- name: Overwrite default grub config in netboot
+  ansible.builtin.copy:
+    src: "{{ pi_pxe_server_working_dir }}/configs/grub.cfg"
+    dest: "{{ pi_pxe_server_working_dir }}/debian-installer/amd64/grub/grub.cfg"
+    mode: "0644"
+    remote_src: true
+
+- name: Print MAC address of each host in the cluster
+  ansible.builtin.debug:
+    msg: "MAC address of {{ item }} is {{ hostvars[item]['mac'] }}"
+  loop: "{{ groups['cluster'] }}"
+  when: hostvars[item]['mac'] is defined
+
+- name: Generate preseed for each machine
+  ansible.builtin.template:
+    src: preseed.cfg.j2
+    dest: "{{ pi_pxe_server_working_dir }}/configs/{{ hostvars[item]['mac'] }}.cfg"
+    mode: "0644"
+  loop: "{{ groups['cluster'] }}"
+
+- name: Install docker sdk python
+  ansible.builtin.apt:
+    name: python3-docker
+    state: present
+
+- name: Install docker compose sdk
+  ansible.builtin.apt:
+    name: docker-compose
+    state: present
+
+- name: Set up apt-cacher-ng
+  ansible.builtin.include_tasks: aptcacheng.yaml
+
+- name: Start PXE server
+  community.docker.docker_compose_v2:
+    project_src: "{{ pi_pxe_server_working_dir }}"
+    state: present
+    build: policy
+    recreate: "auto"

@@ -1,0 +1,38 @@
+# Disable DNS Server.
+port=0
+
+
+# ======== DHCP setup ==========
+# there is only this dhcp server
+dhcp-authoritative
+
+dhcp-option=1,{{ ansible_default_ipv4.netmask }}
+dhcp-option=3,{{ ansible_default_ipv4.gateway }}
+dhcp-option=6,{{ ansible_dns['nameservers'][0] }},1.1.1.1
+
+# We're DHCP configuring on this range
+dhcp-range={{ ansible_default_ipv4.network | ansible.utils.ipmath(1) }},{{ ansible_default_ipv4.broadcast | ansible.utils.ipmath(-1) }},{{ ansible_default_ipv4.netmask }},12h
+
+{% for host in groups['cluster'] %}
+dhcp-host={{ hostvars[host]['mac'] }},{{ hostvars[host]['ansible_host'] }},{{ host }},30d
+{% endfor %}
+
+# ======== PXE config =============
+
+# Match Arch Types efi x86 and x64
+dhcp-match=set:efi-x86_64,option:client-arch,7
+dhcp-match=set:efi-x86_64,option:client-arch,9
+
+# Set the Boot file based on the tag from above
+dhcp-boot=tag:efi-x86_64,grubx64.efi
+
+# ========= TFTP config ============
+
+# Enable TFTP server
+enable-tftp
+tftp-root=/tftp
+
+# Log DHCP queries to stdout
+log-queries
+log-dhcp
+log-facility=-

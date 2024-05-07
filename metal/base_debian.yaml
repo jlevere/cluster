@@ -1,0 +1,11 @@
+- name: Ping machines to make sure they are up
+  hosts: cluster
+  tasks:
+    - name: Ping each
+      ansible.builtin.ping:
+
+- name: Post install base provisioning
+  hosts: cluster
+  become: true
+  roles:
+    - base_debian_provision

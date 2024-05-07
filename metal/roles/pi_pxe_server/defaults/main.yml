@@ -1,0 +1,4 @@
+pi_pxe_server_tar: "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/netboot.tar.gz"
+pi_pxe_server_tar_checksum: "sha256:9ae301b2f6b31d6c94ca0a46b6428b550bd84416113e34054cd9167033e2c18b"
+pi_pxe_server_working_dir: "/opt/pxe"
+pi_pxe_server_apt_cache_ng_port: "3142"

@@ -1,0 +1,5 @@
+allow-hotplug ib0
+iface ib0 inet static
+    address {{ hostvars[item]['ib_address'] }}
+    netmask 255.255.255.0
+    broadcast "{{ hostvars[item]['ib_address'] | ipaddr('broadcast', "255.255.255.0") }}"

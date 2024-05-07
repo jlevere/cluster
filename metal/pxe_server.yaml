@@ -1,0 +1,29 @@
+- name: Install docker for pxe server
+  hosts: pi0
+  become: true
+  gather_facts: true
+  vars:
+    docker_install_compose: true
+  roles:
+    - geerlingguy.docker
+
+- name: Start pxe server
+  hosts: pi0
+  become: true
+  gather_facts: true
+  roles:
+    - pi_pxe_server
+
+- name: Provision Machines
+  hosts: pi0
+  gather_facts: true
+  tasks:
+    - name: Send wake packets
+      community.general.wakeonlan:
+        mac: "{{ hostvars[item]['mac'] }}"
+      delegate_to: pi0
+      loop: "{{ groups['cluster'] }}"
+
+    - name: Wait for a bit for them to start up
+      ansible.builtin.wait_for_connection:
+        timeout: 300

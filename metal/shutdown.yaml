@@ -1,0 +1,10 @@
+- name: Shutdown machines
+  hosts: cluster
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Shutdown Machines
+      community.general.shutdown:
+        msg: "Shutting down at ansible request"
+        delay: 5
+      delegate_to: pi0

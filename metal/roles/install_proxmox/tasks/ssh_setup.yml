@@ -1,0 +1,35 @@
+- name: Add ssh keys to everything
+  community.crypto.openssh_keypair:
+    path: ~/.ssh/id_ed25519
+    type: ed25519
+    state: present
+  become: false
+
+- name: Slurp key
+  ansible.builtin.slurp:
+    src: ~/.ssh/id_ed25519.pub
+  register: ssh_public_key
+  become: false
+
+- name: Authorized keys
+  ansible.posix.authorized_key:
+    user: "{{ ansible_user }}"
+    key: "{{ ssh_public_key.content | b64decode }}"
+    state: present
+  delegate_to: "{{ item }}"
+  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
+  become: false
+
+- name: Clear known_hosts file
+  ansible.builtin.lineinfile:
+    path: ~/.ssh/known_hosts
+    state: absent
+  become: false
+
+
+- name: Keyscan known_hosts
+  ansible.builtin.command:
+    cmd: "ssh-keyscan  -t ed25519 -H {{ item }} >> ~/.ssh/known_hosts"
+  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
+  become: false
+  

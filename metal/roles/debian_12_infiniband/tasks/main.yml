@@ -1,0 +1,13 @@
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+  loop:
+    - rdma-core
+    - opensm
+    - ibutils
+    - infiniband-diags
+
+- name: Set up interface
+  ansible.builtin.template:
+  
