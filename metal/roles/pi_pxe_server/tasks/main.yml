@@ -1,3 +1,10 @@
+- name: Create ssh keypairs
+  community.crypto.openssh_keypair:
+    path: ~/.ssh/id_ed25519
+    type: ed25519
+    state: present
+  become: false
+
 - name: Create working dir
   ansible.builtin.file:
     path: "{{ item }}"

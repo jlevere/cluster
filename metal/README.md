@@ -103,7 +103,26 @@ Understanding infiniband concepts.  Read this first!!!!!!
 RDMA-Core package can be used in place of the NVIDIA OFED package.  [https://docs.nvidia.com/networking/display/rdmacore50](https://docs.nvidia.com/networking/display/rdmacore50)  also `OFED’ user-space libraries are in the rdma-core repository and the kernel components are in driver/infiniband subsystem of the linux tree.` [https://www.rohitzambre.com/blog/2018/2/9/for-the-rdma-novice-libfabric-libibverbs-infiniband-ofed-mofed](https://www.rohitzambre.com/blog/2018/2/9/for-the-rdma-novice-libfabric-libibverbs-infiniband-ofed-mofed)
 
 
+#### Setting up OpenSM
 
+Starting opensm on individual ports
+
+[https://documentation.suse.com/smart/network/html/subnet-manager-configuring/index.html](https://documentation.suse.com/smart/network/html/subnet-manager-configuring/index.html)
+
+
+```bash
+sudo opensm -B -g 0x248a070300d2c692 -p P1 -f /var/log/opensm-ib1.log 
+```
+
+Where `0x248a070300d2c692` refers to the second port in `ibstat -p`
+
+```bash
+sudo ibstat -p
+0x248a070300d2c691
+0x248a070300d2c692
+```
+
+The `-p P1` refers to the priority of this opensm instance.  I have them as 0, 1, 2, for links 0, 1, 2. 
 
 
 

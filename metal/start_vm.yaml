@@ -1,0 +1,40 @@
+- name: Start a VM in kubevirt
+  hosts: machine0
+  become: true
+  tasks:
+    - name: Create a VirtualMachine
+      kubevirt.core.kubevirt_vm:
+        state: present
+        name: testvm
+        namespace: default
+        labels:
+          app: test
+        instancetype:
+          name: instancetype-fwj8j
+        preference:
+          name: fedora
+        spec:
+          domain:
+            devices:
+              interfaces:
+                - name: default
+                  masquerade: {}
+                - name: bridge-network
+                  bridge: {}
+          networks:
+            - name: default
+              pod: {}
+            - name: bridge-network
+              multus:
+                networkName: kindexgw
+          volumes:
+            - containerDisk:
+                image: quay.io/containerdisks/fedora:latest
+              name: containerdisk
+            - cloudInitNoCloud:
+                userData: |-
+                  #cloud-config
+                  # The default username is: fedora
+                  ssh_authorized_keys:
+                    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAyBxwcWxdE8i8AKKhwIKH69dxPwzQ/YJm7WjJNY87Lu
+              name: cloudinit

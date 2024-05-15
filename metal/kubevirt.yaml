@@ -1,0 +1,88 @@
+- name: Install kubevirt
+  hosts: machine0
+  become: true
+  tasks:
+    - name: Check for KubeVirt CRD
+      ansible.builtin.shell: "kubectl get crd | grep kubevirts.kubevirt.io"
+      register: kubevirt_crd_result
+      ignore_errors: true
+
+    - name: Get KubeVirt version
+      ansible.builtin.shell: "curl -s https://api.github.com/repos/kubevirt/kubevirt/releases | grep tag_name | grep -v -- '-rc' | head -1 | awk -F': ' '{print $2}' | sed 's/,//' | xargs"
+      register: kubevirt_version
+
+    - name: Use the latest release tag
+      ansible.builtin.debug:
+        msg: "Latest kubevirt release tag: {{ kubevirt_version.stdout }}"
+      when: kubevirt_crd_result.rc != 0
+
+    - name: Download and install KubeVirt Operator
+      ansible.builtin.shell: "kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/{{ kubevirt_version.stdout }}/kubevirt-operator.yaml"
+      when: kubevirt_crd_result.rc != 0
+
+    - name: Download and install KubeVirt Custom Resource
+      ansible.builtin.shell: "kubectl apply -f https://github.com/kubevirt/kubevirt/releases/download/{{ kubevirt_version.stdout }}/kubevirt-cr.yaml"
+      when: kubevirt_crd_result.rc != 0
+
+    - name: Check KubeVirt installation
+      ansible.builtin.shell: "kubectl get kubevirt"
+
+      when: kubevirt_crd_result.rc != 0
+
+    - name: Install virtctl
+      ansible.builtin.import_role:
+        name: virtctl
+
+
+- name: Install CDI
+  hosts: machine0
+  become: true
+  tasks:
+    - name: Check if CDI installed
+      ansible.builtin.command: "kubectl get namespace cdi"
+      register: cdi_installed
+      failed_when: false
+      changed_when: false
+
+    - name: Get latest version of CDI
+      ansible.builtin.uri:
+        url: https://github.com/kubevirt/containerized-data-importer/releases/latest
+        return_content: true
+      register: cdi_release_page
+      when: cdi_installed.rc != 0
+    
+    - name: Extract version number
+      ansible.builtin.set_fact:
+        cdi_version: "{{ cdi_release_page.content | regex_search('v[0-9]+\\.[0-9]+\\.[0-9]+') }}"
+      when: cdi_installed.rc != 0
+
+    - name: Create CDI operator
+      ansible.builtin.command: "kubectl create -f https://github.com/kubevirt/containerized-data-importer/releases/download/{{ cdi_version }}/cdi-operator.yaml"
+      when: cdi_installed.rc != 0
+
+    - name: Create CDI CR yaml
+      ansible.builtin.command: "kubectl create -f https://github.com/kubevirt/containerized-data-importer/releases/download/{{ cdi_version }}/cdi-cr.yaml"
+      when: cdi_installed.rc != 0
+
+- name: Starting a VM
+  hosts: machine0
+  become: true
+  tasks:
+
+    - name: Ensure pip installed
+      ansible.builtin.package:
+        name:
+          - python3-pip
+        state: present
+
+    - name: Ensure not pip externally managed
+      ansible.builtin.file:
+        path: /usr/lib/python3.11/EXTERNALLY-MANAGED
+        state: absent
+
+    - name: Ensure pip pkg openshift
+      ansible.builtin.pip:
+        name:
+          - openshift
+          - kubernetes
+          - Jinja2

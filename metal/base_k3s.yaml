@@ -1,7 +1,6 @@
 - name: K3s Install
   hosts: cluster
   become: true
-  gather_facts: true
   pre_tasks:
     - name: Set control node
       ansible.builtin.set_fact:
@@ -9,10 +8,65 @@
       when: inventory_hostname in ['machine0']
 
   tasks:
+    - name: Get k3s installed version
+      ansible.builtin.command: k3s --version
+      register: k3s_version_output
+      changed_when: false
+      ignore_errors: true
+
     - name: Install K3s
       ansible.builtin.include_role:
         name: xanmanning.k3s
         public: true
       vars:
-        k3s_state: installed
+        k3s_state: 'installed'
         k3s_become: true
+      when: k3s_version_output.rc != 0
+      register: k3s_install_result
+
+- name: Install kubectl on machine0
+  hosts: machine0
+  become: true
+  vars:
+    kubectl_version: 1.29.3
+    os: linux
+    arch: amd64
+
+  tasks:
+    - name: Check for kubectl already installed
+      ansible.builtin.stat:
+        path: /usr/local/bin/kubectl
+      register: kubectl_installed
+
+    - name: Tempfile create
+      ansible.builtin.tempfile:
+        state: directory
+      register: kubectl_tmp_directory
+      when: kubectl_installed.stat.exists == 0
+
+    - name: Download kubectl binary
+      ansible.builtin.get_url:
+        url: "https://cdn.dl.k8s.io/release/v{{ kubectl_version }}/bin/{{ os }}/{{ arch }}/kubectl"
+        checksum: "sha512:https://cdn.dl.k8s.io/release/v{{ kubectl_version }}/bin/{{ os }}/{{ arch }}/kubectl.sha512"
+        dest: "{{ kubectl_tmp_directory.path }}"
+        mode: "0600"
+      when: kubectl_installed.stat.exists == 0
+
+    - name: Copy kubectl binary to destination directory
+      ansible.builtin.copy:
+        src: "{{ kubectl_tmp_directory.path }}/{{ item }}"
+        dest: "/usr/local/bin/{{ item }}"
+        mode: "0755"
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        remote_src: true
+      with_items:
+        - kubectl
+      when: kubectl_installed.stat.exists == 0
+
+    - name: Move in kubeconfig
+      ansible.builtin.copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /root/.kube/config
+        remote_src: true
+        mode: "0600"

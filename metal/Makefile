@@ -9,7 +9,12 @@ CRYPT_PASS := ./keys/cryptpass
 
 help:
 	@echo "Available targets:"
-	@echo "pxe_server:    Run Ansible playbook for PXE server configuration"
+	@echo "pxe_server:      Run Ansible playbook for PXE server configuration"
+	@echo "base_prov:       Run Ansible playbook for base Debian provisioning"
+	@echo "install_k3s:     Run Ansible playbook for installing K3s"
+	@echo "install_proxmox: Run Ansible playbook for installing Proxmox VE"
+	@echo "ping:            Ping all hosts in the cluster"
+	@echo "shutdown:        Shutdown machines using Ansible playbook"
 
 gen_ssh_keys:
 	@if [ ! -f "$(SSH_KEY)" ]; then \
@@ -42,6 +47,16 @@ install_k3s:
 	ansible-playbook \
 		--inventory inventories/cluster.yaml \
 			base_k3s.yaml -vv
+
+kubevirt:
+	ansible-playbook \
+		--inventory inventories/cluster.yaml \
+			kubevirt.yaml
+
+start_vm:
+	ansible-playbook \
+		--inventory inventories/cluster.yaml \
+			start_vm.yaml -vvv
 
 install_proxmox:
 	ansible-playbook \

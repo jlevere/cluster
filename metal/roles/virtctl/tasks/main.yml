@@ -1,0 +1,21 @@
+- name: Get KubeVirt version
+  ansible.builtin.shell: "curl -s https://api.github.com/repos/kubevirt/kubevirt/releases | grep tag_name | grep -v -- '-rc' | head -1 | awk -F': ' '{print $2}' | sed 's/,//' | xargs"
+  register: kubevirt_version
+
+- name: Check if virtctl binary exists
+  ansible.builtin.stat:
+    path: /usr/local/bin/virtctl
+  register: virtctl_binary
+
+- name: Download virtctl binary
+  ansible.builtin.get_url:
+    url: "https://github.com/kubevirt/kubevirt/releases/download/{{ kubevirt_version.stdout }}/virtctl-{{ kubevirt_version.stdout }}-linux-amd64"
+    dest: /usr/local/bin/virtctl
+    mode: 'u+x'
+  when: not virtctl_binary.stat.exists
+
+- name: Ensure virtctl is executable
+  ansible.builtin.file:
+    path: /usr/local/bin/virtctl
+    mode: 'u+x'
+  when: not virtctl_binary.stat.exists
