@@ -51,7 +51,7 @@ TODO:
     [] setup keys for the nodes to ssh into each other
     [] config cluster connections
     [] setup user account and roles for diff things
-    [] generate api access (this may nessesitate tls certs)
+    [] generate api access (this may necessitate tls certs)
     [] ansible deploy a vm
 
     [] networking????

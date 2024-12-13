@@ -13,7 +13,7 @@
   ansible.builtin.apt:
     update_cache: true
     upgrade: dist
-  
+
 - name: Install proxmox VE kernel
   ansible.builtin.apt:
     name: proxmox-default-kernel

@@ -36,7 +36,7 @@ crypt_pass: gen_user_pass
 pxe_server: gen_ssh_keys crypt_pass
 	ansible-playbook \
 		--inventory inventories/cluster.yaml \
-		pxe_server.yaml -vvv
+		pxe_server.yaml -v
 
 base_prov:
 	ansible-playbook \

@@ -1,4 +1,3 @@
-
 - name: Update /etc/hosts file
   ansible.builtin.lineinfile:
     dest: /etc/hosts
@@ -7,4 +6,7 @@
     line: "{{ hostvars[inventory_hostname]['ansible_host'] }} {{ inventory_hostname }}"
 
 - name: Install Proxmox
-  ansible.builtin.include_task: install_proxmox.yml
+  ansible.builtin.include_tasks: install_proxmox.yml
+
+- name: Distribute ssh keys
+  ansible.builtin.include_tasks: ssh_setup.yml

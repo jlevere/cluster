@@ -5,14 +5,17 @@
   changed_when: False
   when: inventory_hostname != 'machine0'
 
-- debug:
-    msg: "{{inventory_hostname}} {{cluster_status}}"
+- name: Debug cluster status
+  ansible.builtin.debug:
+    msg: "{{ inventory_hostname }} cluster status: {{ cluster_status.stdout }}"
+  when: inventory_hostname != 'machine0'
 
-- name: Create cluster
-  ansible.builtin.command: "pvecm create {{ config_proxmox_cluster_name }}"
-  when: cluster_status is defined and cluster_status.rc != 1 and inventory_hostname == 'machine0'
+- name: Create cluster on the initial node
+  ansible.builtin.command:
+    cmd: "pvecm create {{ config_proxmox_cluster_name }}"
+  when: inventory_hostname == 'machine0' and cluster_status.rc == 1
 
-- name: Add self to cluster
+- name: Add node to cluster
   ansible.builtin.command:
     cmd: "pvecm add {{ groups['cluster']['machine0']['ansible_host'] }}"
-  when: inventory_hostname != 'machine0'
+  when: inventory_hostname != 'machine0' and cluster_status.rc == 0
