@@ -14,6 +14,9 @@
     mode: "0600"
   delegate_to: "{{ item }}"
   with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
+  become: false
+  tags:
+    - copy-id
 
 - name: Slurp pub key
   ansible.builtin.slurp:
