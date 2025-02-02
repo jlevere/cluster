@@ -1,9 +1,11 @@
 pi:
   hosts:
     pi0:
-      ansible_host: 192.168.88.9
+      #ansible_host: 192.168.88.9
+      ansible_host: 100.113.182.51
       ansible_user: 'pi'
       mac: 'DC:A6:32:D0:06:04'
+      ansible_python_interpreter: /usr/bin/python3.11
 
 cluster:
   hosts:
@@ -11,12 +13,15 @@ cluster:
       ansible_host: 192.168.88.10
       ansible_user: 'debian'
       mac: 'a0:8c:fd:e6:2f:65'
+      ansible_python_interpreter: /usr/bin/python3.11
     machine1:
       ansible_host: 192.168.88.11
       ansible_user: 'debian'
       mac: '18:60:24:88:21:44'
+      ansible_python_interpreter: /usr/bin/python3.11
     machine2:
       ansible_host: 192.168.88.12
       ansible_user: 'debian'
       mac: '40:b0:34:43:a8:b3'
+      ansible_python_interpreter: /usr/bin/python3.11
 
