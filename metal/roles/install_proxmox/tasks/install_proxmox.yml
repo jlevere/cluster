@@ -1,6 +1,6 @@
 - name: Download Proxmox VE repository key
   ansible.builtin.get_url:
-    url: https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg
+    url: http://download.proxmox.com/debian/proxmox-release-bookworm.gpg
     dest: /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
     mode: "0644"
 
@@ -49,3 +49,13 @@
   ansible.builtin.apt:
     name: os-prober
     state: absent
+
+- name: Add user to PVE authentication
+  ansible.builtin.command:
+    cmd: "pveum user add {{ ansible_user }}@pam"
+  args:
+    creates: "/etc/pve/user.cfg"
+
+- name: Add user to Administrators group
+  ansible.builtin.command:
+    cmd: "pveum aclmod / -user {{ ansible_user }}@pam -role Administrator"
