@@ -349,7 +349,7 @@ Neat little api explorer for proxmox
 
 TODO:
 
-- [] Write static configs for cluster machine networking
+- [] Write /etc/host configs for ipoib interfaces so that proxmox can use them
 
 
 - [x] Write debian base provisioning role.
