@@ -237,6 +237,86 @@ Pong from machine0.(none) (Lid 2): time 0.066 ms
 
 
 
+## IB Reference information:
+
+
+```bash
+ sudo mstconfig query
+
+Device #1:
+----------
+
+Device type:    ConnectX3
+Device:         /sys/bus/pci/devices/0000:01:00.0/config
+
+Configurations:                              Next Boot
+         SRIOV_EN                            False(0)
+         NUM_OF_VFS                          8
+         LINK_TYPE_P1                        VPI(3)
+         LINK_TYPE_P2                        VPI(3)
+         LOG_BAR_SIZE                        3
+         BOOT_PKEY_P1                        0
+         BOOT_PKEY_P2                        0
+         BOOT_OPTION_ROM_EN_P1               True(1)
+         BOOT_VLAN_EN_P1                     False(0)
+         BOOT_RETRY_CNT_P1                   0
+         LEGACY_BOOT_PROTOCOL_P1             PXE(1)
+         BOOT_VLAN_P1                        1
+         BOOT_OPTION_ROM_EN_P2               True(1)
+         BOOT_VLAN_EN_P2                     False(0)
+         BOOT_RETRY_CNT_P2                   0
+         LEGACY_BOOT_PROTOCOL_P2             PXE(1)
+         BOOT_VLAN_P2                        1
+         IP_VER_P1                           IPv4(0)
+         IP_VER_P2                           IPv4(0)
+```
+
+```bash
+sudo lspci -v -s 0000:01:00.0
+01:00.0 Ethernet controller: Mellanox Technologies MT27500 Family [ConnectX-3]
+        Subsystem: Mellanox Technologies MT27500 Family [ConnectX-3]
+        Flags: bus master, fast devsel, latency 0, IRQ 16, IOMMU group 2
+        Memory at cf800000 (64-bit, non-prefetchable) [size=1M]
+        Memory at cf000000 (64-bit, prefetchable) [size=8M]
+        Expansion ROM at <ignored> [disabled]
+        Capabilities: [40] Power Management version 3
+        Capabilities: [48] Vital Product Data
+        Capabilities: [9c] MSI-X: Enable+ Count=128 Masked-
+        Capabilities: [60] Express Endpoint, MSI 00
+        Capabilities: [c0] Vendor Specific Information: Len=18 <?>
+        Capabilities: [100] Alternative Routing-ID Interpretation (ARI)
+        Capabilities: [148] Device Serial Number 24-8a-07-03-00-d2-c6-90
+        Capabilities: [154] Advanced Error Reporting
+        Capabilities: [18c] Secondary PCI Express
+        Kernel driver in use: mlx4_core
+        Kernel modules: mlx4_core
+```
+
+
+| **Interface** | **Physical Port** |
+|---------------|-------------------|
+| `enp1s0`      |  Port 1           |
+| `enp1s0d1`    |  Port 2           |
+
+
+### Physical Connection Table
+
+| **Device**   | **Interface**    | **IP Address**    | **Connected To**   | **Connected Interface**  | **Remote IP Address** |
+|--------------|------------------|-------------------|--------------------|--------------------------|-----------------------|
+| **Machine0** | `enp1s0`         | 192.168.1.1/30    | **Machine1**       | `enp1s0`                 | 192.168.1.2/30       |
+| **Machine0** | `enp1s0d1`       | 192.168.2.1/30    | **Machine2**       | `enp1s0`                 | 192.168.2.2/30       |
+| **Machine1** | `enp1s0`         | 192.168.1.2/30    | **Machine0**       | `enp1s0`                 | 192.168.1.1/30       |
+| **Machine1** | `enp1s0d1`       | 192.168.3.1/30    | **Machine2**       | `enp1s0d1`               | 192.168.3.2/30       |
+| **Machine2** | `enp1s0`         | 192.168.2.2/30    | **Machine0**       | `enp1s0d1`               | 192.168.2.1/30       |
+| **Machine2** | `enp1s0d1`       | 192.168.3.2/30    | **Machine1**       | `enp1s0d1`               | 192.168.3.1/30       |
+
+### Columns:
+- **Device**: The machine you're working with.
+- **Interface**: The network interface on the device (either `enp1s0` or `enp1s0d1`).
+- **IP Address**: The IP address assigned to that interface.
+- **Connected To**: The machine that the interface is directly connected to.
+- **Connected Interface**: The interface on the remote machine that is connected to the local interface.
+- **Remote IP Address**: The IP address of the remote machine's connected interface.
 
 
 ### Future plans
