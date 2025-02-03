@@ -45,7 +45,7 @@ This is the configuration system for the homelab cluster metal.  This is the PXE
 
 
 
-![Homelab drawing](./docs/homelab-1.png)
+![Homelab drawing](./docs/homelab-2.png)
 
 
 ### Mesh network config
