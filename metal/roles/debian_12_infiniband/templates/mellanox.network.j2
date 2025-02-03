@@ -1,0 +1,7 @@
+[Match]
+MACAddress={{ item.value }}
+
+[Network]
+Address={{ hostvars[inventory_hostname]['static_ips'][item.key] }}
+LinkLocalAddressing=no
+ConfigureWithoutCarrier=yes

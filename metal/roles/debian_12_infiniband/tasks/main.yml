@@ -1,13 +1,5 @@
+- name: Install tools and set devices to ethernet mode
+  ansible.builtin.include_tasks: ethernet_config.yml
 
-- name: Install base packages
-  ansible.builtin.apt:
-    name: "{{ item }}"
-  loop:
-    - rdma-core
-    - opensm
-    - ibutils
-    - infiniband-diags
-
-- name: Set up interface
-  ansible.builtin.template:
-  
+- name: Configure IP Mesh for cluster
+  ansible.builtin.include_tasks: ip_mesh.yml

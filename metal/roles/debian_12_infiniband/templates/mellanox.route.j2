@@ -1,0 +1,7 @@
+[Route]
+{% for host in groups['cluster'] %}
+  {% if host != inventory_hostname %}
+    Destination={{ hostvars[host]['static_ips']['enp1s0'] | regex_replace('/30', '/30') }}
+    Gateway={{ hostvars[inventory_hostname]['static_ips']['enp1s0'] | regex_replace('/30', '1') }}
+  {% endif %}
+{% endfor %}

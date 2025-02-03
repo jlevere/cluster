@@ -1,0 +1,6 @@
+- name: Configure Mellanox Mesh Eth Network
+  hosts: cluster
+  become: true
+  gather_facts: true
+  roles:
+    - debian_12_infiniband

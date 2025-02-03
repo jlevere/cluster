@@ -1,0 +1,35 @@
+---
+- name: Create systemd network directory
+  ansible.builtin.file:
+    path: /etc/systemd/network
+    state: directory
+    mode: "0755"
+
+- name: Configure Mellanox link files
+  ansible.builtin.template:
+    src: mellanox.link.j2
+    dest: "/etc/systemd/network/10-{{ item.key }}.link"
+    mode: "0644"
+  loop: "{{ mcx | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Configure Mellanox network files
+  ansible.builtin.template:
+    src: mellanox.network.j2
+    dest: "/etc/systemd/network/20-{{ item.key }}.network"
+    mode: "0644"
+  loop: "{{ mcx | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+
+- name: Configure static routes
+  ansible.builtin.template:
+    src: mellanox.route.j2
+    dest: "/etc/systemd/network/30-mlx-static.network"
+    mode: "0644"
+
+- name: Reload systemd-networkd
+  ansible.builtin.systemd:
+    name: systemd-networkd
+    state: reloaded

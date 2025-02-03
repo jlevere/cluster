@@ -1,0 +1,53 @@
+- name: Install required packages
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - ibutils
+    - mstflint
+    - infiniband-diags
+    - iproute2
+  tags: packages
+
+- name: Find PCI ID
+  ansible.builtin.shell: lspci -n | grep 15b3:1003 | awk '{print "0000:"$1}' # CX3 vendor/device ID
+  register: pci_id
+
+- name: Query current MST configuration
+  ansible.builtin.shell: "mstconfig -d {{ pci_id.stdout | trim }} q"
+  register: mstconfig_query
+  become: true
+
+- name: Extract LINK_TYPE_P1 value
+  ansible.builtin.set_fact:
+    link_type_p1: "{{ mstconfig_query.stdout | regex_search('LINK_TYPE_P1\\s+(\\S+)', '\\1') }}"
+
+- name: Extract LINK_TYPE_P2 value
+  ansible.builtin.set_fact:
+    link_type_p2: "{{ mstconfig_query.stdout | regex_search('LINK_TYPE_P2\\s+(\\S+)', '\\1') }}"
+
+- name: Debug current LINK_TYPE values
+  ansible.builtin.debug:
+    msg:
+      - "LINK_TYPE_P1 is {{ link_type_p1 }}"
+      - "LINK_TYPE_P2 is {{ link_type_p2 }}"
+
+- name: Update LINK_TYPE_P1 to ETH(2) if needed
+  ansible.builtin.shell: "echo 'y' | mstconfig -d {{ pci_id.stdout | trim }} set LINK_TYPE_P1=2"
+  become: true
+  when: link_type_p1 != "ETH(2)"
+  register: update_link_type_p1
+
+- name: Update LINK_TYPE_P2 to ETH(2) if needed
+  ansible.builtin.shell: "echo 'y' | mstconfig -d {{ pci_id.stdout | trim }} set LINK_TYPE_P2=2"
+  become: true
+  when: link_type_p2 != "ETH(2)"
+  register: update_link_type_p2
+
+- name: Set flag for reboot if any link type changed
+  ansible.builtin.set_fact:
+    reboot_needed: "{{ (update_link_type_p1 is defined and update_link_type_p1.changed) or (update_link_type_p2 is defined and update_link_type_p2.changed) }}"
+
+- name: Reboot machine if configuration was changed
+  ansible.builtin.reboot:
+  when: reboot_needed
