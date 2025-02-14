@@ -1,8 +1,7 @@
 pi:
   hosts:
     pi0:
-      #ansible_host: 192.168.88.9
-      ansible_host: 100.113.182.51
+      ansible_host: 192.168.88.9
       ansible_user: "pi"
       mac: "DC:A6:32:D0:06:04"
       ansible_python_interpreter: /usr/bin/python3.11
