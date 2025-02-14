@@ -10,11 +10,24 @@ services:
     network_mode: host
     cap_add:
       - NET_ADMIN
+    restart: unless-stopped
   http:
     build: ./http
     network_mode: host
     volumes:
-      #- ./data/os:/usr/share/nginx/html/os
       - ./configs/:/usr/share/nginx/html/configs
     environment:
       NGINX_PORT: 80
+    restart: unless-stopped
+    
+  aptutil:
+    image: ghcr.io/jlevere/aptutil:latest
+    container_name: aptutil
+    ports:
+      - "3142:3142"
+    volumes:
+      - ./aptutil/aptutil.toml:/etc/go-apt-cacher.toml
+      - ./aptutil/meta:/meta
+      - ./aptutil/cache:/cache
+    restart: unless-stopped
+    network_mode: host

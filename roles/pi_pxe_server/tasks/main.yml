@@ -71,8 +71,8 @@
     name: docker-compose
     state: present
 
-- name: Set up apt-cacher-ng
-  ansible.builtin.include_tasks: aptcacheng.yaml
+- name: Set up apt cache
+  ansible.builtin.include_tasks: aptutil.yaml
 
 - name: Start PXE server
   community.docker.docker_compose_v2:
