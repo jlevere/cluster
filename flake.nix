@@ -1,5 +1,5 @@
 {
-  description = "A Nix-flake-based Python development environment";
+  description = "A Nix-flake-based development environment";
 
   inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
 
@@ -24,9 +24,11 @@
             pip
             venvShellHook
             uv
+            kubectl
             python312Packages.ansible-core.out
             pkgs.ansible-lint
             mkpasswd
+            go-task
           ]);
       };
     });

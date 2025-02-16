@@ -1,0 +1,82 @@
+version: "3"
+
+env:
+  ANSIBLE_HOST_KEY_CHECKING: "False"
+
+vars:
+  SSH_KEY: ./keys/cluster_key
+  PASS_FILE: ./keys/pass
+  CRYPT_PASS: ./keys/cryptpass
+
+tasks:
+  default:
+    cmds:
+      - task --list-all
+
+  pxe_server:
+    desc: Run Ansible playbook for PXE server configuration
+    deps: [gen_ssh_keys, crypt_pass]
+    cmds:
+      - ansible-playbook --inventory inventories/cluster.yaml pxe_server.yaml -v
+
+  base_prov:
+    desc: Run Ansible playbook for base Debian provisioning
+    cmds:
+      - ansible-playbook --inventory inventories/cluster.yaml base_debian.yaml -v
+
+  install_k3s:
+    desc: Run Ansible playbook for installing K3s
+    cmds:
+      - ansible-playbook --inventory inventories/cluster.yaml base_k3s.yaml -vv
+
+  kubevirt:
+    desc: Run Ansible playbook for Kubevirt setup
+    cmds:
+      - ansible-playbook --inventory inventories/cluster.yaml kubevirt.yaml
+
+  config_mellanox:
+    desc: Run Ansible playbook for config mellanox support
+    cmds:
+      - ansible-playbook --inventory inventories/cluster.yaml mellanox.yaml -vv
+
+  install_proxmox:
+    desc: Run Ansible playbook for installing Proxmox VE
+    cmds:
+      - ansible-playbook --inventory inventories/cluster.yaml install_proxmox.yaml
+
+  ping:
+    desc: Ping all hosts in the cluster
+    cmds:
+      - ansible cluster -m ping --inventory inventories/cluster.yaml
+
+  shutdown:
+    desc: Shutdown machines using Ansible playbook
+    cmds:
+      - 'echo -n "Shutdown machines? [y/N] " && read ans && [ ${ans:-N} = y ]'
+      - ansible-playbook --inventory inventories/cluster.yaml shutdown.yaml -vvv
+
+  gen_ssh_keys:
+    desc: Generate SSH keys if they don't exist
+    cmds:
+      - |
+        if [ ! -f "{{.SSH_KEY}}" ]; then
+          ssh-keygen -t ed25519 -P '' -f "{{.SSH_KEY}}"
+        else
+          echo "SSH key already exists. Skipping generation."
+        fi
+
+  gen_user_pass:
+    desc: Generate user password if it doesn't exist
+    cmds:
+      - |
+        if [ ! -f "{{.PASS_FILE}}" ]; then
+          openssl rand -base64 32 | tr -dc 'a-zA-Z0-9' | head -c 16 > {{.PASS_FILE}}
+        else
+          echo "User password already exists. Skipping generation."
+        fi
+
+  crypt_pass:
+    desc: Encrypt generated password
+    deps: [gen_user_pass]
+    cmds:
+      - cat {{.PASS_FILE}} | mkpasswd --method=bcrypt-a -R 12 -s > {{.CRYPT_PASS}}
