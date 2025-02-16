@@ -67,19 +67,25 @@ d-i partman/confirm_nooverwrite boolean true
 
 
 # ============= Packages ===============
-# add a local repo source
-
-# temp comment out while testing grub
-#d-i apt-setup/local0/repository string \
-#       http://{{ ansible_default_ipv4.address }}/os stable main
-
-#d-i apt-setup/local0/comment string Repository
-#d-i debian-installer/allow_unauthenticated boolean true  # this might need to be changed
-
-d-i mirror/http/proxy string http://{{ ansible_default_ipv4.address }}:{{ pi_pxe_server_apt_cache_ng_port }}
-
 d-i apt-setup/non-free boolean true
 d-i apt-setup/contrib boolean true
+
+
+########## adding local repos ############
+
+#d-i debian-installer/allow_unauthenticated boolean true
+
+d-i apt-setup/local0/repository string \
+       http://{{ hostvars['pi0']['ansible_host'] }}:3142/debian bookworm main
+d-i apt-setup/local0/source boolean true
+d-i apt-setup/local0/comment string Repository
+
+d-i apt-setup/local1/repository string \
+       http://{{ hostvars['pi0']['ansible_host'] }}:3142/security bookworm main
+d-i apt-setup/local1/source boolean true
+d-i apt-setup/local1/comment string Repository
+
+######### setup default packages to install ########
 
 tasksel tasksel/first multiselect standard, ssh-server
 
@@ -98,4 +104,4 @@ d-i preseed/late_command string \
     in-target chown -R {{ hostvars[item]['ansible_user'] }}:{{ hostvars[item]['ansible_user'] }} /home/{{ hostvars[item]['ansible_user'] }}/.ssh/; \
     in-target chmod 644 /home/{{ hostvars[item]['ansible_user'] }}/.ssh/authorized_keys; \
     in-target chmod 700 /home/{{ hostvars[item]['ansible_user'] }}/.ssh/; \
-    in-target /bin/bash -c 'echo {{ item }} > /etc/hostname'
+    in-target /bin/bash -c 'echo "{{ item }}" > /etc/hostname'
