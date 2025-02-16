@@ -1,2 +1,3 @@
 ssh_public_key: "{{ lookup('file', './keys/cluster_key.pub') }}"
 user_password_hash: "{{ lookup('file', './keys/cryptpass') }}"
+ansible_ssh_private_key_file: ./keys/cluster_key

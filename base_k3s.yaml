@@ -1,5 +1,5 @@
 - name: K3s Install
-  hosts: cluster
+  hosts: kube
   become: true
   pre_tasks:
     - name: Set control node
@@ -24,11 +24,11 @@
       when: k3s_version_output.rc != 0
       register: k3s_install_result
 
-- name: Install kubectl on machine0
-  hosts: machine0
+- name: Install kubectl on k0
+  hosts: k0
   become: true
   vars:
-    kubectl_version: 1.29.3
+    kubectl_version: 1.32
     os: linux
     arch: amd64
 

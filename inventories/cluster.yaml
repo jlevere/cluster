@@ -41,3 +41,11 @@ cluster:
       static_ips:
         enp1s0: "192.168.2.2/30"
         enp1s0d1: "192.168.3.2/30"
+
+kube:
+  hosts:
+    k0:
+      ansible_host: 192.168.88.20
+      ansible_user: "debian"
+      mac: "54:bf:64:76:26:7e"
+      ansible_python_interpreter: /usr/bin/python3.11
