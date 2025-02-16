@@ -26,6 +26,7 @@
             uv
             python312Packages.ansible-core.out
             pkgs.ansible-lint
+            mkpasswd
           ]);
       };
     });
