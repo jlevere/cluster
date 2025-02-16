@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
     
   aptutil:
-    image: ghcr.io/jlevere/aptutil:latest
+    image: ghcr.io/jlevere/aptutil:latest-arm64
     container_name: aptutil
     ports:
       - "3142:3142"

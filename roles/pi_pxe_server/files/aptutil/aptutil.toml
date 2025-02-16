@@ -40,4 +40,4 @@ format = "plain"
 [mapping]
 debian = "http://deb.debian.org/debian/"
 proxmox = "http://download.proxmox.com/debian/pve"
-debian-security = "http://security.debian.org/debian-security"
+security = "http://security.debian.org/debian-security"
