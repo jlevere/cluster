@@ -10,7 +10,6 @@ This is the configuration system for the homelab cluster metal.  This is the PXE
     - [IB Reference](#ib-reference-information)
         - [Eth Preformance](#eth-preformance)
 - [Prov Mechanism](#provisioning-mechanism)
-- [Current Config](#current-configuration)
 - [Alt Config](#alternate-configureation)
 - [Infiniband Stuff](#infiniband-stuff)
     - [Infiniband Setup](#infiniband-setup)
@@ -32,7 +31,8 @@ This is the configuration system for the homelab cluster metal.  This is the PXE
 
 
 
-- 3 * HP Prodesk G5 400 SFF desktops
+- 3 * HP Prodesk G5 400 SFF desktops i5 7500, 32gb ram
+- 1 * Dell Optiplex 3050 SFF i7 6700, 16gb ram
 - 1 * Raspberry pi 4b 4gb ram
 - 1 * RB2011iL routerboard
 
@@ -45,7 +45,7 @@ This is the configuration system for the homelab cluster metal.  This is the PXE
 
 
 
-![Homelab drawing](./docs/homelab-2.png)
+![Homelab drawing](docs/homelab-2025-02-16-0359.png)
 
 
 ### Mesh network config
@@ -160,9 +160,23 @@ Connecting to host 192.168.2.1, port 5201
 
 ## Provisioning Mechanism
 
-## Current Configuration
+All of the machines run the same version and configuration of debian as their base.  The base OS is provisioned via PXE boot.  The raspi runs a set of docker containers which preform the functions for the PXE boot server as well as caching apt packages.
+
+The PXE server also serves the [preeseed](https://wiki.debian.org/DebianInstaller/Preseed) [file](./roles/pi_pxe_server/templates/preseed.cfg.j2) to configure the debian install.  With my internet, the first machine takes around an hour to install and each one after that takes about 5-10min.
+
+After this base install is done, a series of ansible playbooks are applied to set up each machines role in the cluster.
+
+All of them have the [base debian role](./roles/base_debian_provision/) applied which sets up their hosts files, installs some drivers, and helps with tasks that are too complicated to do in the preseeding. This also gives a location to add things simply. The preseeding system is very hard to test as you have to boot with it and check for errors which takes hours.
+
+After that, the machines in the core cluster have the [infiniband role](./roles/debian_12_infiniband/) applied which sets up drivers and interfaces for their highspeed RDMA mellanox links.  Currently these are set into ethernet mode as I have not been able to find anything that can take advantage of the RDMA from infiniband ;-;
+
+The core cluster also gets the [proxmox role](./roles/install_proxmox/) which swaps out their kernels for the virtual machine optimized kernel from proxmox and sets up all the needed configs and joins them into a cluster.
+
+The kuberneties machine has its own playbook [k3s](./base_k3s.yaml).  
 
 ## Alternate Configureation
+
+The core machines can also be setup to run a kubevirt cluster with the kubevirt [ansible role](./roles/virtctl/).
 
 ## PXE and uefi
 
