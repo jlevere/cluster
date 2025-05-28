@@ -1,0 +1,22 @@
+argo-cd:
+  dex:
+    enabled: false
+
+  global:
+    priorityClassName: ""
+
+  configs:
+    cm:
+      statusbadge.enabled: "true"
+
+  server:
+    extraArgs:
+      - --insecure
+    service:
+      type: ClusterIP
+    ingress:
+      enabled: false
+
+  controller: {}
+  repoServer: {}
+  redis: {}

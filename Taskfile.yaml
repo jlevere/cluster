@@ -10,8 +10,97 @@ vars:
 
 tasks:
   default:
+    desc: List available commands
     cmds:
       - task --list-all
+
+  k3s_deploy_core:
+    desc: Setup the core applications in k3s like argocd
+    cmds:
+      - kubectl create namespace argocd --dry-run=client --output=yaml | kubectl apply -f -
+
+  # Elastic Stack deployment tasks
+  elastic_deploy_operator:
+    desc: Deploy ECK operator using ArgoCD
+    cmds:
+      - echo "🚀 Deploying ECK Operator..."
+      - kubectl apply -f k3s-apps/eck-operator/application.yaml
+      - echo "⏳ Waiting for ECK operator to be ready..."
+      - kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=elastic-operator -n elastic-system --timeout=300s || echo "Timeout waiting for operator, check manually"
+
+  elastic_deploy_stack:
+    desc: Deploy Elasticsearch, Kibana, and Fleet Server
+    deps: [elastic_deploy_operator]
+    cmds:
+      - echo "📦 Deploying Elasticsearch and Kibana..."
+      - kubectl apply -f k3s-apps/elasticsearch/application.yaml
+      - echo "⏳ Waiting for Elasticsearch to be ready..."
+      - kubectl wait --for=condition=Ready elasticsearch/quickstart -n elastic-system --timeout=600s || echo "Timeout waiting for Elasticsearch, check manually"
+      - echo "⏳ Waiting for Kibana to be ready..."
+      - kubectl wait --for=condition=Ready kibana/quickstart -n elastic-system --timeout=300s || echo "Timeout waiting for Kibana, check manually"
+
+  elastic_deploy_fleet:
+    desc: Deploy Fleet Server for agent management
+    deps: [elastic_deploy_stack]
+    cmds:
+      - echo "🚢 Deploying Fleet Server..."
+      - kubectl apply -f k3s-apps/elasticsearch/fleet-server.yaml
+      - echo "⏳ Waiting for Fleet Server to be ready..."
+      - kubectl wait --for=condition=Ready agent/fleet-server -n elastic-system --timeout=300s || echo "Timeout waiting for Fleet Server, check manually"
+
+  elastic_deploy_all:
+    desc: Deploy complete Elastic Stack (ECK, Elasticsearch, Kibana, Fleet Server)
+    deps: [elastic_deploy_fleet]
+    cmds:
+      - echo "✅ Elastic Stack deployment complete!"
+      - task: elastic_status
+
+  elastic_status:
+    desc: Check status of Elastic Stack components
+    cmds:
+      - echo "📊 Elastic Stack Status:"
+      - kubectl get elasticsearch,kibana,agent -n elastic-system
+      - echo ""
+      - echo "🔗 Services:"
+      - kubectl get services -n elastic-system
+      - echo ""
+      - echo "📋 To access Kibana:"
+      - echo "1. Get the elastic user password:"
+      - echo "   kubectl get secret quickstart-es-elastic-user -n elastic-system -o go-template='{{.data.elastic | base64decode}}'"
+      - echo "2. Port-forward to Kibana:"
+      - echo "   kubectl port-forward service/quickstart-kb-http 5601 -n elastic-system"
+      - echo "3. Access Kibana at https://localhost:5601"
+      - echo ""
+      - echo "🚢 Fleet Server Configuration:"
+      - echo "External IP for Windows machines:"
+      - kubectl get service fleet-server -n elastic-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null && echo "" || echo "LoadBalancer IP not yet assigned"
+      - echo "Expected Fleet Server URL: https://192.168.88.20:8220"
+      - echo ""
+      - echo "⚙️  Manual Fleet Server Setup Required:"
+      - echo "1. Access Kibana → Fleet → Settings"
+      - echo "2. Add Fleet Server host: https://192.168.88.20:8220"
+      - echo "3. Create agent policies for your Windows machines"
+      - echo "4. Use enrollment tokens with: https://192.168.88.20:8220"
+
+  elastic_cleanup:
+    desc: Remove Elastic Stack deployment
+    cmds:
+      - echo "🧹 Cleaning up Elastic Stack..."
+      - kubectl delete -f k3s-apps/elasticsearch/application.yaml --ignore-not-found=true
+      - kubectl delete -f k3s-apps/eck-operator/application.yaml --ignore-not-found=true
+      - kubectl delete namespace elastic-system --ignore-not-found=true
+
+  elastic_logs:
+    desc: Show logs for Elastic Stack components
+    cmds:
+      - echo "📋 ECK Operator logs:"
+      - kubectl logs -l app.kubernetes.io/name=elastic-operator -n elastic-system --tail=50
+      - echo ""
+      - echo "📋 Elasticsearch logs:"
+      - kubectl logs -l elasticsearch.k8s.elastic.co/cluster-name=quickstart -n elastic-system --tail=50
+      - echo ""
+      - echo "📋 Fleet Server logs:"
+      - kubectl logs -l agent.k8s.elastic.co/name=fleet-server -n elastic-system --tail=50
 
   pxe_server:
     desc: Run Ansible playbook for PXE server configuration

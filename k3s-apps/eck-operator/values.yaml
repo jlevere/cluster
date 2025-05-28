@@ -1,0 +1,34 @@
+eck-operator:
+  # Install CRDs
+  installCRDs: true
+
+  # Operator configuration
+  config:
+    # Log level
+    logVerbosity: 1
+    # Metrics port
+    metricsPort: 8080
+    # Container registry for Elastic Stack images
+    containerRegistry: docker.elastic.co
+
+  # Resource limits for the operator
+  resources:
+    limits:
+      cpu: 1
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 150Mi
+
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+
+  # Node selector (optional)
+  nodeSelector: {}
+
+  # Tolerations (optional)
+  tolerations: []
+
+  # Affinity (optional)
+  affinity: {}
