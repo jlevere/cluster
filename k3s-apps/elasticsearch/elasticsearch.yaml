@@ -5,6 +5,14 @@ metadata:
   namespace: elastic-system
 spec:
   version: 8.16.1
+  http:
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+          - ip: 192.168.88.20 # K3s node IP
+          - ip: 127.0.0.1 # localhost
+          - ip: 10.43.0.1 # Kubernetes service network (if needed)
+        # No DNS entries since no DNS server exists
   nodeSets:
     - name: default
       count: 1

@@ -12,6 +12,13 @@ spec:
   mode: fleet
   fleetServerEnabled: true
   policyID: eck-fleet-server
+  http:
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+          - ip: 192.168.88.20 # K3s node IP - this is what Windows machines will connect to
+          - ip: 127.0.0.1 # localhost
+        # No DNS entries since no DNS server exists
   deployment:
     replicas: 1
     podTemplate:

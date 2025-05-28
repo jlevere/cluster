@@ -20,17 +20,51 @@ tasks:
       - kubectl create namespace argocd --dry-run=client --output=yaml | kubectl apply -f -
 
   # Elastic Stack deployment tasks
-  elastic_deploy_operator:
-    desc: Deploy ECK operator using ArgoCD
+  elastic_bootstrap:
+    desc: Bootstrap ArgoCD to manage all k3s applications (GitOps way)
     cmds:
+      - echo "🚀 Bootstrapping GitOps for k3s applications..."
+      - kubectl apply -f k3s-apps/app-of-apps.yaml
+      - echo "✅ ArgoCD will now automatically manage applications defined in app-of-apps.yaml"
+      - echo "📋 Monitor progress with: kubectl get applications -n argocd"
+
+  elastic_deploy_all:
+    desc: Deploy complete Elastic Stack using GitOps (recommended)
+    deps: [elastic_bootstrap]
+    cmds:
+      - echo "✅ GitOps deployment initiated!"
+      - echo "⏳ ArgoCD is now deploying applications automatically..."
+      - echo "📋 Monitor with: kubectl get applications -n argocd"
+      - echo "🔍 Or use ArgoCD UI: kubectl port-forward svc/argocd-server -n argocd 8080:443"
+      - task: elastic_wait_ready
+
+  elastic_wait_ready:
+    desc: Wait for Elastic Stack components to be ready
+    cmds:
+      - echo "⏳ Waiting for ECK operator to be ready..."
+      - kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=elastic-operator -n elastic-system --timeout=300s || echo "⚠️  Timeout waiting for operator, check manually"
+      - echo "⏳ Waiting for Elasticsearch to be ready..."
+      - kubectl wait --for=condition=Ready elasticsearch/quickstart -n elastic-system --timeout=600s || echo "⚠️  Timeout waiting for Elasticsearch, check manually"
+      - echo "⏳ Waiting for Kibana to be ready..."
+      - kubectl wait --for=condition=Ready kibana/quickstart -n elastic-system --timeout=300s || echo "⚠️  Timeout waiting for Kibana, check manually"
+      - echo "⏳ Waiting for Fleet Server to be ready..."
+      - kubectl wait --for=condition=Ready agent/fleet-server -n elastic-system --timeout=300s || echo "⚠️  Timeout waiting for Fleet Server, check manually"
+      - echo "✅ All components ready!"
+      - task: elastic_status
+
+  # Legacy manual deployment tasks (for troubleshooting)
+  elastic_deploy_operator_manual:
+    desc: "[LEGACY] Deploy ECK operator manually (not GitOps)"
+    cmds:
+      - echo "⚠️  Using manual deployment - consider using 'task elastic_deploy_all' for GitOps"
       - echo "🚀 Deploying ECK Operator..."
       - kubectl apply -f k3s-apps/eck-operator/application.yaml
       - echo "⏳ Waiting for ECK operator to be ready..."
       - kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=elastic-operator -n elastic-system --timeout=300s || echo "Timeout waiting for operator, check manually"
 
-  elastic_deploy_stack:
-    desc: Deploy Elasticsearch, Kibana, and Fleet Server
-    deps: [elastic_deploy_operator]
+  elastic_deploy_stack_manual:
+    desc: "[LEGACY] Deploy Elasticsearch, Kibana, and Fleet Server manually"
+    deps: [elastic_deploy_operator_manual]
     cmds:
       - echo "📦 Deploying Elasticsearch and Kibana..."
       - kubectl apply -f k3s-apps/elasticsearch/application.yaml
@@ -47,13 +81,6 @@ tasks:
       - kubectl apply -f k3s-apps/elasticsearch/fleet-server.yaml
       - echo "⏳ Waiting for Fleet Server to be ready..."
       - kubectl wait --for=condition=Ready agent/fleet-server -n elastic-system --timeout=300s || echo "Timeout waiting for Fleet Server, check manually"
-
-  elastic_deploy_all:
-    desc: Deploy complete Elastic Stack (ECK, Elasticsearch, Kibana, Fleet Server)
-    deps: [elastic_deploy_fleet]
-    cmds:
-      - echo "✅ Elastic Stack deployment complete!"
-      - task: elastic_status
 
   elastic_status:
     desc: Check status of Elastic Stack components
@@ -83,11 +110,14 @@ tasks:
       - echo "4. Use enrollment tokens with: https://192.168.88.20:8220"
 
   elastic_cleanup:
-    desc: Remove Elastic Stack deployment
+    desc: Remove Elastic Stack deployment (GitOps way)
     cmds:
-      - echo "🧹 Cleaning up Elastic Stack..."
-      - kubectl delete -f k3s-apps/elasticsearch/application.yaml --ignore-not-found=true
-      - kubectl delete -f k3s-apps/eck-operator/application.yaml --ignore-not-found=true
+      - echo "🧹 Cleaning up Elastic Stack via GitOps..."
+      - kubectl delete -f k3s-apps/app-of-apps.yaml --ignore-not-found=true
+      - echo "⏳ Waiting for ArgoCD to clean up applications..."
+      - sleep 10
+      - echo "🧹 Force cleanup if needed..."
+      - kubectl delete applications -n argocd eck-operator elasticsearch --ignore-not-found=true
       - kubectl delete namespace elastic-system --ignore-not-found=true
 
   elastic_logs:

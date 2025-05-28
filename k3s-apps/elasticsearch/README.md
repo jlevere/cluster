@@ -8,6 +8,7 @@ This directory contains the configuration for deploying a complete Elastic Stack
 - **Proxmox Cluster**: `192.168.88.10-12` (Windows VMs run here)
 - **LoadBalancer**: Traefik (built into K3s) provides external access
 - **Fleet Server**: Will be accessible at `https://192.168.88.20:8220`
+- **⚠️ No DNS Server**: All connections use IP addresses only
 
 ## Components
 
@@ -122,13 +123,14 @@ Run on Windows machines in Proxmox (as Administrator):
 
 **Note**: Use `--insecure` flag since you're using self-signed certificates in your homelab.
 
-## Network Flow
+## Network Flow (IP-Only Environment)
 
 ```
 Windows VM (Proxmox) → 192.168.88.20:8220 → Traefik LoadBalancer → Fleet Server Pod
+Your Laptop → kubectl port-forward → 127.0.0.1:5601 → Kibana Pod
 ```
 
-The Windows machines in your Proxmox cluster will connect directly to your K3s node IP address.
+**Important**: Since there's no DNS server, all connections must use IP addresses. Hostnames and FQDNs will not work.
 
 ## Fleet Server Configuration
 

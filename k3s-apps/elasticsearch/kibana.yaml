@@ -27,9 +27,12 @@ spec:
               memory: 512Mi
               cpu: 0.5
   http:
+    tls:
+      selfSignedCertificate:
+        subjectAltNames:
+          - ip: 127.0.0.1 # localhost for port-forward access
+          - ip: 192.168.88.20 # K3s node IP (if direct access needed)
+        # No DNS entries since no DNS server exists
     service:
       spec:
         type: ClusterIP
-    # tls:
-    #   selfSignedCertificate:
-    #     disabled: true  # Disable TLS for simplicity
