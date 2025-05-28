@@ -19,9 +19,9 @@ tasks:
     cmds:
       - kubectl create namespace argocd --dry-run=client --output=yaml | kubectl apply -f -
 
-  # Elastic Stack deployment tasks
-  elastic_bootstrap:
-    desc: Bootstrap ArgoCD to manage all k3s applications (GitOps way)
+  argo_apps_bootstrap:
+    desc: Bootstrap ArgoCD to manage all k3s applications
+    silent: true
     cmds:
       - echo "Bootstrapping GitOps for k3s applications..."
       - kubectl apply -f k3s-apps/app-of-apps.yaml
@@ -30,6 +30,7 @@ tasks:
 
   argocd_access:
     desc: Setup ArgoCD browser access (port-forward and get password)
+    silent: true
     cmds:
       - echo " Setting up ArgoCD browser access..."
       - echo ""
@@ -38,63 +39,41 @@ tasks:
       - echo ""
       - echo ""
       - echo " Starting port-forward to ArgoCD UI..."
-      - echo " Access ArgoCD at https\//localhost\:8080"
+      - echo " Access ArgoCD at http://localhost:8085"
       - echo " Username admin"
       - echo " Password (shown above)"
       - echo ""
       - echo " Press Ctrl+C to stop port-forwarding"
-      - kubectl port-forward svc/argocd-server -n argocd 8080:443
+      - kubectl port-forward svc/argocd-server -n argocd 8085:443
 
   argocd_password:
     desc: Get ArgoCD admin password only
+    silent: true
     cmds:
-      - echo "ArgoCD Admin Password:"
       - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
       - echo ""
 
   kibana_access:
     desc: Setup Kibana browser access (port-forward and get password)
+    silent: true
     cmds:
       - echo " Setting up Kibana browser access..."
       - echo ""
       - echo " Elasticsearch elastic user password:"
-      - kubectl get secret quickstart-es-elastic-user -n elastic-system -o go-template='{{.data.elastic | base64decode}}'
+      - kubectl get secret quickstart-es-elastic-user -n elastic-system -o jsonpath="{.data.elastic}" | base64 -d
       - echo ""
       - echo ""
       - echo " Starting port-forward to Kibana UI..."
-      - echo " Access Kibana at https\//localhost\:5601"
+      - echo " Access Kibana at https://localhost:5601"
       - echo " Username elastic"
       - echo " Password (shown above)"
       - echo ""
       - echo " Press Ctrl+C to stop port-forwarding"
       - kubectl port-forward service/quickstart-kb-http 5601 -n elastic-system
 
-  elastic_deploy_all:
-    desc: Deploy complete Elastic Stack using GitOps (recommended)
-    deps: [elastic_bootstrap]
-    cmds:
-      - echo " GitOps deployment initiated!"
-      - echo " ArgoCD is now deploying applications automatically..."
-      - echo " Monitor with kubectl get applications -n argocd"
-      - echo " Or use ArgoCD UI kubectl port-forward svc/argocd-server -n argocd 8080:443"
-      - task: elastic_wait_ready
-
-  elastic_wait_ready:
-    desc: Wait for Elastic Stack components to be ready
-    cmds:
-      - echo " Waiting for ECK operator to be ready..."
-      - kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=elastic-operator -n elastic-system --timeout=300s || echo " Timeout waiting for operator, check manually"
-      - echo " Waiting for Elasticsearch to be ready..."
-      - kubectl wait --for=condition=Ready elasticsearch/quickstart -n elastic-system --timeout=600s || echo " Timeout waiting for Elasticsearch, check manually"
-      - echo " Waiting for Kibana to be ready..."
-      - kubectl wait --for=condition=Ready kibana/quickstart -n elastic-system --timeout=300s || echo " Timeout waiting for Kibana, check manually"
-      - echo " Waiting for Fleet Server to be ready..."
-      - kubectl wait --for=condition=Ready agent/fleet-server -n elastic-system --timeout=300s || echo " Timeout waiting for Fleet Server, check manually"
-      - echo " All components ready!"
-      - task: elastic_status
-
   elastic_status:
     desc: Check status of Elastic Stack components
+    silent: true
     cmds:
       - echo " Elastic Stack Status"
       - kubectl get elasticsearch,kibana,agent -n elastic-system
@@ -104,7 +83,7 @@ tasks:
       - echo ""
       - echo " To access Kibana"
       - echo "1. Get the elastic user password"
-      - echo "   kubectl get secret quickstart-es-elastic-user -n elastic-system -o go-template='{{.data.elastic | base64decode}}'"
+      - echo "   kubectl get secret quickstart-es-elastic-user -n elastic-system -o jsonpath='{.data.elastic}' | base64 -d"
       - echo "2. Port-forward to Kibana"
       - echo "   kubectl port-forward service/quickstart-kb-http 5601 -n elastic-system"
       - echo "3. Access Kibana at https\//localhost\:5601"
@@ -122,6 +101,7 @@ tasks:
 
   elastic_logs:
     desc: Show logs for Elastic Stack components
+    silent: true
     cmds:
       - echo " ECK Operator logs"
       - kubectl logs -l app.kubernetes.io/name=elastic-operator -n elastic-system --tail=50
