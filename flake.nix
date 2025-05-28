@@ -25,10 +25,11 @@
             venvShellHook
             uv
             kubectl
-            python312Packages.ansible-core.out
+            ansible-core
             pkgs.ansible-lint
             mkpasswd
             go-task
+            kubernetes-helm
           ]);
       };
     });
