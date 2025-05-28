@@ -18,13 +18,9 @@ spec:
       count: 1
       config:
         node.store.allow_mmap: false
-        # Enable security for Fleet Server integration
-        xpack.security.enabled: true
-        xpack.security.enrollment.enabled: true
-        # Fleet Server requires these settings
-        xpack.fleet.agents.enabled: true
-        xpack.fleet.packages.enabled: true
-        xpack.fleet.templates.enabled: true
+        # ECK automatically enables security and manages Fleet integration
+        # Removed reserved settings: xpack.security.enabled, xpack.security.enrollment.enabled
+        # Removed Fleet settings as they're managed by ECK when Fleet Server is deployed
       podTemplate:
         spec:
           containers:

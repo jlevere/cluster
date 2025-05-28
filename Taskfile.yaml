@@ -23,113 +23,113 @@ tasks:
   elastic_bootstrap:
     desc: Bootstrap ArgoCD to manage all k3s applications (GitOps way)
     cmds:
-      - echo "🚀 Bootstrapping GitOps for k3s applications..."
+      - echo "Bootstrapping GitOps for k3s applications..."
       - kubectl apply -f k3s-apps/app-of-apps.yaml
-      - echo "✅ ArgoCD will now automatically manage applications defined in app-of-apps.yaml"
-      - echo "📋 Monitor progress with: kubectl get applications -n argocd"
+      - echo "ArgoCD will now automatically manage applications defined in app-of-apps.yaml"
+      - echo "Monitor progress with kubectl get applications -n argocd"
+
+  argocd_access:
+    desc: Setup ArgoCD browser access (port-forward and get password)
+    cmds:
+      - echo " Setting up ArgoCD browser access..."
+      - echo ""
+      - echo " ArgoCD Admin Password:"
+      - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+      - echo ""
+      - echo ""
+      - echo " Starting port-forward to ArgoCD UI..."
+      - echo " Access ArgoCD at https\//localhost\:8080"
+      - echo " Username admin"
+      - echo " Password (shown above)"
+      - echo ""
+      - echo " Press Ctrl+C to stop port-forwarding"
+      - kubectl port-forward svc/argocd-server -n argocd 8080:443
+
+  argocd_password:
+    desc: Get ArgoCD admin password only
+    cmds:
+      - echo "ArgoCD Admin Password:"
+      - kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+      - echo ""
+
+  kibana_access:
+    desc: Setup Kibana browser access (port-forward and get password)
+    cmds:
+      - echo " Setting up Kibana browser access..."
+      - echo ""
+      - echo " Elasticsearch elastic user password:"
+      - kubectl get secret quickstart-es-elastic-user -n elastic-system -o go-template='{{.data.elastic | base64decode}}'
+      - echo ""
+      - echo ""
+      - echo " Starting port-forward to Kibana UI..."
+      - echo " Access Kibana at https\//localhost\:5601"
+      - echo " Username elastic"
+      - echo " Password (shown above)"
+      - echo ""
+      - echo " Press Ctrl+C to stop port-forwarding"
+      - kubectl port-forward service/quickstart-kb-http 5601 -n elastic-system
 
   elastic_deploy_all:
     desc: Deploy complete Elastic Stack using GitOps (recommended)
     deps: [elastic_bootstrap]
     cmds:
-      - echo "✅ GitOps deployment initiated!"
-      - echo "⏳ ArgoCD is now deploying applications automatically..."
-      - echo "📋 Monitor with: kubectl get applications -n argocd"
-      - echo "🔍 Or use ArgoCD UI: kubectl port-forward svc/argocd-server -n argocd 8080:443"
+      - echo " GitOps deployment initiated!"
+      - echo " ArgoCD is now deploying applications automatically..."
+      - echo " Monitor with kubectl get applications -n argocd"
+      - echo " Or use ArgoCD UI kubectl port-forward svc/argocd-server -n argocd 8080:443"
       - task: elastic_wait_ready
 
   elastic_wait_ready:
     desc: Wait for Elastic Stack components to be ready
     cmds:
-      - echo "⏳ Waiting for ECK operator to be ready..."
-      - kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=elastic-operator -n elastic-system --timeout=300s || echo "⚠️  Timeout waiting for operator, check manually"
-      - echo "⏳ Waiting for Elasticsearch to be ready..."
-      - kubectl wait --for=condition=Ready elasticsearch/quickstart -n elastic-system --timeout=600s || echo "⚠️  Timeout waiting for Elasticsearch, check manually"
-      - echo "⏳ Waiting for Kibana to be ready..."
-      - kubectl wait --for=condition=Ready kibana/quickstart -n elastic-system --timeout=300s || echo "⚠️  Timeout waiting for Kibana, check manually"
-      - echo "⏳ Waiting for Fleet Server to be ready..."
-      - kubectl wait --for=condition=Ready agent/fleet-server -n elastic-system --timeout=300s || echo "⚠️  Timeout waiting for Fleet Server, check manually"
-      - echo "✅ All components ready!"
+      - echo " Waiting for ECK operator to be ready..."
+      - kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=elastic-operator -n elastic-system --timeout=300s || echo " Timeout waiting for operator, check manually"
+      - echo " Waiting for Elasticsearch to be ready..."
+      - kubectl wait --for=condition=Ready elasticsearch/quickstart -n elastic-system --timeout=600s || echo " Timeout waiting for Elasticsearch, check manually"
+      - echo " Waiting for Kibana to be ready..."
+      - kubectl wait --for=condition=Ready kibana/quickstart -n elastic-system --timeout=300s || echo " Timeout waiting for Kibana, check manually"
+      - echo " Waiting for Fleet Server to be ready..."
+      - kubectl wait --for=condition=Ready agent/fleet-server -n elastic-system --timeout=300s || echo " Timeout waiting for Fleet Server, check manually"
+      - echo " All components ready!"
       - task: elastic_status
-
-  # Legacy manual deployment tasks (for troubleshooting)
-  elastic_deploy_operator_manual:
-    desc: "[LEGACY] Deploy ECK operator manually (not GitOps)"
-    cmds:
-      - echo "⚠️  Using manual deployment - consider using 'task elastic_deploy_all' for GitOps"
-      - echo "🚀 Deploying ECK Operator..."
-      - kubectl apply -f k3s-apps/eck-operator/application.yaml
-      - echo "⏳ Waiting for ECK operator to be ready..."
-      - kubectl wait --for=condition=Ready pod -l app.kubernetes.io/name=elastic-operator -n elastic-system --timeout=300s || echo "Timeout waiting for operator, check manually"
-
-  elastic_deploy_stack_manual:
-    desc: "[LEGACY] Deploy Elasticsearch, Kibana, and Fleet Server manually"
-    deps: [elastic_deploy_operator_manual]
-    cmds:
-      - echo "📦 Deploying Elasticsearch and Kibana..."
-      - kubectl apply -f k3s-apps/elasticsearch/application.yaml
-      - echo "⏳ Waiting for Elasticsearch to be ready..."
-      - kubectl wait --for=condition=Ready elasticsearch/quickstart -n elastic-system --timeout=600s || echo "Timeout waiting for Elasticsearch, check manually"
-      - echo "⏳ Waiting for Kibana to be ready..."
-      - kubectl wait --for=condition=Ready kibana/quickstart -n elastic-system --timeout=300s || echo "Timeout waiting for Kibana, check manually"
-
-  elastic_deploy_fleet:
-    desc: Deploy Fleet Server for agent management
-    deps: [elastic_deploy_stack]
-    cmds:
-      - echo "🚢 Deploying Fleet Server..."
-      - kubectl apply -f k3s-apps/elasticsearch/fleet-server.yaml
-      - echo "⏳ Waiting for Fleet Server to be ready..."
-      - kubectl wait --for=condition=Ready agent/fleet-server -n elastic-system --timeout=300s || echo "Timeout waiting for Fleet Server, check manually"
 
   elastic_status:
     desc: Check status of Elastic Stack components
     cmds:
-      - echo "📊 Elastic Stack Status:"
+      - echo " Elastic Stack Status"
       - kubectl get elasticsearch,kibana,agent -n elastic-system
       - echo ""
-      - echo "🔗 Services:"
+      - echo " Services"
       - kubectl get services -n elastic-system
       - echo ""
-      - echo "📋 To access Kibana:"
-      - echo "1. Get the elastic user password:"
+      - echo " To access Kibana"
+      - echo "1. Get the elastic user password"
       - echo "   kubectl get secret quickstart-es-elastic-user -n elastic-system -o go-template='{{.data.elastic | base64decode}}'"
-      - echo "2. Port-forward to Kibana:"
+      - echo "2. Port-forward to Kibana"
       - echo "   kubectl port-forward service/quickstart-kb-http 5601 -n elastic-system"
-      - echo "3. Access Kibana at https://localhost:5601"
+      - echo "3. Access Kibana at https\//localhost\:5601"
       - echo ""
-      - echo "🚢 Fleet Server Configuration:"
-      - echo "External IP for Windows machines:"
+      - echo " Fleet Server Configuration"
+      - echo "External IP for Windows machines"
       - kubectl get service fleet-server -n elastic-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null && echo "" || echo "LoadBalancer IP not yet assigned"
-      - echo "Expected Fleet Server URL: https://192.168.88.20:8220"
+      - echo "Expected Fleet Server URL https\//192.168.88.20:8220"
       - echo ""
-      - echo "⚙️  Manual Fleet Server Setup Required:"
+      - echo " Manual Fleet Server Setup Required"
       - echo "1. Access Kibana → Fleet → Settings"
-      - echo "2. Add Fleet Server host: https://192.168.88.20:8220"
+      - echo "2. Add Fleet Server host https\://192.168.88.20:8220"
       - echo "3. Create agent policies for your Windows machines"
-      - echo "4. Use enrollment tokens with: https://192.168.88.20:8220"
-
-  elastic_cleanup:
-    desc: Remove Elastic Stack deployment (GitOps way)
-    cmds:
-      - echo "🧹 Cleaning up Elastic Stack via GitOps..."
-      - kubectl delete -f k3s-apps/app-of-apps.yaml --ignore-not-found=true
-      - echo "⏳ Waiting for ArgoCD to clean up applications..."
-      - sleep 10
-      - echo "🧹 Force cleanup if needed..."
-      - kubectl delete applications -n argocd eck-operator elasticsearch --ignore-not-found=true
-      - kubectl delete namespace elastic-system --ignore-not-found=true
+      - echo "4. Use enrollment tokens with https\://192.168.88.20:8220"
 
   elastic_logs:
     desc: Show logs for Elastic Stack components
     cmds:
-      - echo "📋 ECK Operator logs:"
+      - echo " ECK Operator logs"
       - kubectl logs -l app.kubernetes.io/name=elastic-operator -n elastic-system --tail=50
       - echo ""
-      - echo "📋 Elasticsearch logs:"
+      - echo " Elasticsearch logs"
       - kubectl logs -l elasticsearch.k8s.elastic.co/cluster-name=quickstart -n elastic-system --tail=50
       - echo ""
-      - echo "📋 Fleet Server logs:"
+      - echo " Fleet Server logs"
       - kubectl logs -l agent.k8s.elastic.co/name=fleet-server -n elastic-system --tail=50
 
   pxe_server:

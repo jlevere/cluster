@@ -9,10 +9,7 @@ spec:
   elasticsearchRef:
     name: quickstart
   config:
-    # Enable Fleet and Integrations
-    xpack.fleet.agents.enabled: true
-    xpack.fleet.packages.enabled: true
-    xpack.fleet.templates.enabled: true
+    # ECK automatically configures Fleet when Fleet Server is deployed
     # Fleet Server hosts will be configured manually in Kibana UI after deployment
     # since external Windows machines need to use the LoadBalancer IP, not internal DNS
   podTemplate:
