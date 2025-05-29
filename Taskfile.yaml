@@ -179,3 +179,28 @@ tasks:
     deps: [gen_user_pass]
     cmds:
       - cat {{.PASS_FILE}} | mkpasswd --method=bcrypt-a -R 12 -s > {{.CRYPT_PASS}}
+
+  helm_deps_update:
+    desc: Update Helm dependencies for all charts
+    cmds:
+      - |
+        for chart in k3s-apps/*/; do
+          if [ -f "$chart/Chart.yaml" ]; then
+            echo "Updating dependencies for $chart"
+            helm dependency update "$chart"
+          fi
+        done
+
+  encrypt_secret:
+    desc: Encrypt a secret value using kubeseal (Usage task encrypt_secret VALUE=myvalue NAME=secret-name NAMESPACE=default)
+    silent: true
+    cmds:
+      - |
+        if [ -z "{{.VALUE}}" ]; then
+          echo "Usage task encrypt_secret VALUE=myvalue"
+          echo "Example task encrypt_secret VALUE=b2507058a2c145d60c6d919c0347fe9c"
+          exit 1
+        fi
+        echo -n "{{.VALUE}}" | kubeseal --raw --from-file=/dev/stdin --name="skyadmin-agent-secrets" --namespace="skyadmin-agent" --controller-name="sealed-secrets" --controller-namespace="kube-system"
+    vars:
+      VALUE: '{{.VALUE | default ""}}'

@@ -2,15 +2,66 @@
 image:
   tag: "latest"
 
-# Environment variables configuration
+# Environment variables configuration - both regular and from secrets
 env:
   ENVIRONMENT: "production"
   LOG_LEVEL: "info"
-
-# Secret environment variables - these will be loaded from the sealed secret
-envFrom:
-  - secretRef:
-      name: skyadmin-agent-secrets
+  # Secret values - we'll reference the secret directly
+  API_TOKEN:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: API_TOKEN
+  VLAN:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: VLAN
+  MAC_ADDRESS:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: MAC_ADDRESS
+  IP_ADDRESS:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: IP_ADDRESS
+  NSEID:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: NSEID
+  LASTNAME:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: LASTNAME
+  ROOMNUMBER:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: ROOMNUMBER
+  PROPERTYID:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: PROPERTYID
+  REGMETHODID:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: REGMETHODID
+  RATEPLANID:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: RATEPLANID
+  PIN:
+    valueFrom:
+      secretKeyRef:
+        name: skyadmin-agent-secrets
+        key: PIN
 
 resources:
   limits:
