@@ -1,0 +1,39 @@
+# Override specific values for this environment
+image:
+  tag: "latest"
+
+# Environment variables configuration
+env:
+  ENVIRONMENT: "production"
+  # Non-sensitive configuration
+  VLAN: "3300"
+  IP_ADDRESS: "10.0.24.21"
+  NSEID: "a39d49"
+  LASTNAME: "Michael"
+  ROOMNUMBER: "101"
+  PROPERTYID: "1234"
+  REGMETHODID: "2"
+  RATEPLANID: "3"
+  LOG_LEVEL: "info"
+
+# Secret environment variables - these will be loaded from the sealed secret
+envFrom:
+  - secretRef:
+      name: skyadmin-agent-secrets
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Additional Helm chart values to ensure proper configuration
+serviceAccount:
+  create: true
+  automount: true
+
+securityContext: {}
+
+podSecurityContext: {}

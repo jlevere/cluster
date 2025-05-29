@@ -1,0 +1,6 @@
+dependencies:
+- name: skyadmin-agent
+  repository: https://jlevere.github.io/skyadmin-agent/
+  version: 0.1.1
+digest: sha256:a9b31796b0a09d9c3cf3ad714ea31cc6511d1a12913cfb2c5dfe4c8dcaa277f0
+generated: "2025-05-28T20:35:08.562263402-04:00"

@@ -1,0 +1,7 @@
+apiVersion: v2
+name: skyadmin-agent
+version: 0.0.0
+dependencies:
+  - name: skyadmin-agent
+    version: 0.1.x
+    repository: https://jlevere.github.io/skyadmin-agent/
