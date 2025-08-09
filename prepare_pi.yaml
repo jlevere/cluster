@@ -1,0 +1,150 @@
+- name: Prepare Raspberry Pi for Ansible-managed roles
+  hosts: pi0
+  become: true
+  gather_facts: true
+  vars:
+    # Networking
+    pi_static_interface: "eth0"
+    pi_static_target_ip: "192.168.1.9"
+    pi_static_prefix: 24
+    pi_gateway: "192.168.1.1"
+    pi_dns_nameservers:
+      - "1.1.1.1"
+      - "8.8.8.8"
+
+    # Hostname
+    pi_set_hostname: true
+
+    # Tailscale (optional)
+    pi_install_tailscale: false
+    # Auth key is read from this file
+    pi_tailscale_authkey_file: "keys/tailscale_token"
+    # Extra options
+    pi_tailscale_routes: [] # e.g., ["192.168.1.0/24"]
+    pi_tailscale_tags: ["tag:pi0"] # optional TS tags
+    pi_tailscale_advertise_exit_node: true
+
+  handlers:
+    - name: Restart dhcpcd
+      ansible.builtin.service:
+        name: dhcpcd
+        state: restarted
+
+  tasks:
+    - name: Ensure base packages
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - python3
+          - python3-apt
+          - apt-transport-https
+        state: present
+        update_cache: true
+
+    - name: Set hostname (optional)
+      ansible.builtin.hostname:
+        name: "{{ inventory_hostname }}"
+      when: pi_set_hostname
+
+    - name: Compute target static IP
+      ansible.builtin.set_fact:
+        _pi_target_ip: "{{ (pi_static_target_ip | trim) if (pi_static_target_ip | length > 0) else ansible_host }}"
+
+    - name: Check if dhcpcd.conf exists
+      ansible.builtin.stat:
+        path: /etc/dhcpcd.conf
+      register: _dhcpcd_conf
+
+    - name: Configure static IP via dhcpcd
+      when: _dhcpcd_conf.stat.exists
+      block:
+        - name: Ensure dhcpcd.conf has static config for {{ pi_static_interface }}
+          ansible.builtin.blockinfile:
+            path: /etc/dhcpcd.conf
+            marker: "# {mark} ANSIBLE MANAGED STATIC {{ pi_static_interface }}"
+            block: |
+              interface {{ pi_static_interface }}
+              static ip_address={{ _pi_target_ip }}/{{ pi_static_prefix }}
+              static routers={{ pi_gateway }}
+              static domain_name_servers={{ pi_dns_nameservers | join(' ') }}
+          register: dhcpcd_conf
+
+        - name: Restart dhcpcd if config changed
+          ansible.builtin.meta: flush_handlers
+
+        - name: Reboot if network config changed (to ensure persistence)
+          ansible.builtin.reboot:
+            reboot_timeout: 600
+          when: dhcpcd_conf.changed
+
+    - name: Configure static IP via NetworkManager (nmcli)
+      when: not _dhcpcd_conf.stat.exists
+      block:
+        - name: Ensure NetworkManager installed
+          ansible.builtin.apt:
+            name: network-manager
+            state: present
+            update_cache: true
+
+        - name: Create or update static connection for {{ pi_static_interface }}
+          community.general.nmcli:
+            conn_name: "static-{{ pi_static_interface }}"
+            ifname: "{{ pi_static_interface }}"
+            type: ethernet
+            ip4: "{{ _pi_target_ip }}/{{ pi_static_prefix }}"
+            gw4: "{{ pi_gateway }}"
+            dns4: "{{ pi_dns_nameservers | join(' ') }}"
+            autoconnect: true
+            state: present
+
+        - name: Bring up static connection
+          community.general.nmcli:
+            conn_name: "static-{{ pi_static_interface }}"
+            state: up
+
+        - name: Reboot to apply networking changes
+          ansible.builtin.reboot:
+            reboot_timeout: 600
+
+    # ---------------- Tailscale via apt repo ----------------
+    - name: Add Tailscale apt key (Raspberry Pi OS)
+      ansible.builtin.get_url:
+        url: "https://pkgs.tailscale.com/stable/raspbian/{{ ansible_distribution_release | lower }}.noarmor.gpg"
+        dest: "/usr/share/keyrings/tailscale-archive-keyring.gpg"
+        mode: "0644"
+      when: pi_install_tailscale
+
+    - name: Add Tailscale apt repository list
+      ansible.builtin.copy:
+        dest: "/etc/apt/sources.list.d/tailscale.list"
+        mode: "0644"
+        content: >-
+          deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/raspbian {{ ansible_distribution_release | lower }} main
+      when: pi_install_tailscale
+
+    - name: Install Tailscale package
+      ansible.builtin.apt:
+        name: tailscale
+        state: present
+        update_cache: true
+      when: pi_install_tailscale
+
+    - name: Read Tailscale auth key
+      ansible.builtin.set_fact:
+        pi_tailscale_authkey: "{{ lookup('file', pi_tailscale_authkey_file) | trim }}"
+      when: pi_install_tailscale
+      no_log: true
+
+    - name: Bring up Tailscale (non-interactive)
+      ansible.builtin.command: >-
+        tailscale up
+        --auth-key={{ pi_tailscale_authkey }}
+        --ssh
+        {{ '--advertise-exit-node' if pi_tailscale_advertise_exit_node else '' }}
+        {{ '--advertise-routes=' + (pi_tailscale_routes | join(',')) if (pi_tailscale_routes | length > 0) else '' }}
+        {{ '--advertise-tags=' + (pi_tailscale_tags | join(',')) if (pi_tailscale_tags | length > 0) else '' }}
+      when: pi_install_tailscale and (pi_tailscale_authkey is defined) and (pi_tailscale_authkey | length > 0)
+      changed_when: false
+      no_log: true
