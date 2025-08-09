@@ -31,6 +31,7 @@
             go-task
             kubernetes-helm
             kubeseal
+            yamllint
           ]);
       };
     });
