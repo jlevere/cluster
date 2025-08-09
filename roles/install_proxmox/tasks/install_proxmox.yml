@@ -1,12 +1,13 @@
 - name: Download Proxmox VE repository key
   ansible.builtin.get_url:
-    url: http://download.proxmox.com/debian/proxmox-release-bookworm.gpg
-    dest: /etc/apt/trusted.gpg.d/proxmox-release-bookworm.gpg
+    url: https://download.proxmox.com/debian/proxmox-release-bookworm.gpg
+    dest: /usr/share/keyrings/proxmox-release-bookworm.gpg
     mode: "0644"
+  register: proxmox_gpg
 
 - name: Add proxmox VE repo
   ansible.builtin.apt_repository:
-    repo: "deb [arch=amd64 trusted=yes] http://download.proxmox.com/debian/pve bookworm pve-no-subscription"
+    repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/proxmox-release-bookworm.gpg] https://download.proxmox.com/debian/pve bookworm pve-no-subscription"
     filename: proxmox
     state: present
 
@@ -14,14 +15,19 @@
   ansible.builtin.apt:
     update_cache: true
     upgrade: dist
+    cache_valid_time: 1800
 
 - name: Install proxmox VE kernel
   ansible.builtin.apt:
     name: proxmox-default-kernel
     state: present
+  register: proxmox_kernel_install
 
-- name: Reboot
+- name: Reboot into Proxmox kernel if newly installed
   ansible.builtin.reboot:
+    msg: "Rebooting into Proxmox kernel"
+    reboot_timeout: 900
+  when: proxmox_kernel_install is changed
 
 - name: Remove enterprise apt list if present
   ansible.builtin.file:
@@ -32,6 +38,7 @@
   ansible.builtin.apt:
     name: "{{ item }}"
     state: present
+    update_cache: true
   loop:
     - proxmox-ve
     - postfix
@@ -42,6 +49,7 @@
   ansible.builtin.apt:
     name: "{{ item }}"
     state: absent
+    purge: true
   loop:
     - linux-image-amd64
     - "linux-image-6.1*"
@@ -50,13 +58,15 @@
   ansible.builtin.apt:
     name: os-prober
     state: absent
+    purge: true
 
 - name: Add user to PVE authentication
   ansible.builtin.command:
     cmd: "pveum user add {{ ansible_user }}@pam"
-  args:
-    creates: "/etc/pve/user.cfg"
+  failed_when: false
+  changed_when: false
 
 - name: Add user to Administrators group
   ansible.builtin.command:
     cmd: "pveum aclmod / -user {{ ansible_user }}@pam -role Administrator"
+  changed_when: false

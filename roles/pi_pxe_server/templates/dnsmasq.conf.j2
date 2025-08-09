@@ -1,11 +1,20 @@
 # Disable DNS Server.
 port=0
 
+# Listen only on the specified interface to avoid conflicts
+interface={{ pi_pxe_listen_interface | default(ansible_default_ipv4.interface) }}
+bind-dynamic
+except-interface=lo
+
 
 # ======== DHCP setup ==========
-# there is only this dhcp server
+{% if pi_pxe_proxy_dhcp | default(false) %}
+# ProxyDHCP mode: another DHCP server hands out IPs; we only provide PXE options
+# Define the local subnet in proxy mode so we reply with boot options only
+dhcp-range={{ ansible_default_ipv4.network }},proxy,{{ ansible_default_ipv4.netmask }}
+{% else %}
+# Standalone DHCP mode: this server is authoritative for the subnet
 dhcp-authoritative
-
 dhcp-option=1,{{ ansible_default_ipv4.netmask }}
 dhcp-option=3,{{ ansible_default_ipv4.gateway }}
 dhcp-option=6,{{ ansible_dns['nameservers'][0] }},1.1.1.1
@@ -16,6 +25,7 @@ dhcp-range={{ ansible_default_ipv4.network | ansible.utils.ipmath(1) }},{{ ansib
 {% for host in groups['cluster'] %}
 dhcp-host={{ hostvars[host]['mac'] }},{{ hostvars[host]['ansible_host'] }},{{ host }},30d
 {% endfor %}
+{% endif %}
 
 # ======== PXE config =============
 
@@ -24,7 +34,8 @@ dhcp-match=set:efi-x86_64,option:client-arch,7
 dhcp-match=set:efi-x86_64,option:client-arch,9
 
 # Set the Boot file based on the tag from above
-dhcp-boot=tag:efi-x86_64,grubx64.efi
+# Also set next-server explicitly to this machine's IP (can be overridden)
+dhcp-boot=tag:efi-x86_64,grubx64.efi,,{{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}
 
 # ========= TFTP config ============
 

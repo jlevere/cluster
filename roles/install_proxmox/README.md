@@ -1,38 +1,35 @@
-Role Name
-=========
+## install_proxmox
 
-A brief description of the role goes here.
+Installs Proxmox VE on Debian hosts, prepares SSH keys across nodes, and optionally forms a Proxmox cluster.
 
-Requirements
-------------
+### Requirements
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+- Debian Bookworm hosts with network access to `download.proxmox.com`.
+- SSH access with privilege escalation.
 
-Role Variables
---------------
+### What it does
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+- Adds Proxmox APT repository and GPG key
+- Installs Proxmox kernel, reboots, installs core packages
+- Removes Debian kernel and `os-prober`
+- Ensures `/etc/hosts` contains the host's management IP and hostname
+- Distributes SSH keys across nodes and populates `known_hosts`
+- (Optional) Creates/joins a Proxmox cluster via `cluster_create.yml`
 
-Dependencies
-------------
+### Variables
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+- `config_proxmox_cluster_name`: Name of the cluster to create (used by `cluster_create.yml`).
 
-Example Playbook
-----------------
+### Example Play
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
+```yaml
+- name: Install Proxmox
+  hosts: kube
+  become: true
+  roles:
+    - install_proxmox
+```
 
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
+### Notes
 
-License
--------
-
-BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+- The role tags tasks with `hosts`, `proxmox`, and `ssh` for selective runs.

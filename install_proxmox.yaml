@@ -1,6 +1,7 @@
-
 - name: Install proxmox
   hosts: cluster
   become: true
+  vars:
+    config_proxmox_cluster_name: homelab
   roles:
     - install_proxmox

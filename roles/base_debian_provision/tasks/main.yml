@@ -1,29 +1,39 @@
-
 - name: Setup hostnames
   ansible.builtin.lineinfile:
     dest: /etc/hosts
-    regexp: '.* {{ item }}$'
+    regexp: "(^|\\s){{ item }}$"
     line: "{{ hostvars[item]['ansible_host'] }} {{ item }}"
     state: present
+    backup: true
   loop: "{{ groups['cluster'] }}"
+  loop_control:
+    label: "{{ item }}"
 
 - name: Install isenkram autoinstal
   ansible.builtin.apt:
     name: isenkram-cli
     state: present
+    update_cache: true
+    cache_valid_time: 3600
   register: isenkram_install_result
 
 - name: Install firmware
   ansible.builtin.command:
     cmd: isenkram-autoinstall-firmware
-  when: isenkram_install_result.changed
+  register: firmware_install_result
+  changed_when: "'install' in (firmware_install_result.stdout | lower) or 'install' in (firmware_install_result.stderr | lower)"
+  failed_when: firmware_install_result.rc != 0 and (firmware_install_result.stdout is not defined or 'no firmware' not in (firmware_install_result.stdout | lower))
 
 - name: Reboot for firmware
   ansible.builtin.reboot:
-  when: isenkram_install_result.changed
+    msg: "Rebooting after firmware installation"
+    reboot_timeout: 900
+    connect_timeout: 30
+  when: firmware_install_result is changed
 
 - name: Disable password login
-  ansible.builtin.lineinfile: 
-    dest: "/etc/ssh/sshd_config" 
-    regexp: "^(#\\s*)?PasswordAuthentication\\s" 
+  ansible.builtin.lineinfile:
+    dest: "/etc/ssh/sshd_config"
+    regexp: "^(#\\s*)?PasswordAuthentication\\s"
     line: "PasswordAuthentication no"
+  notify: Restart ssh

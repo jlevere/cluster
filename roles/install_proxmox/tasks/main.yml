@@ -1,12 +1,16 @@
-- name: Update /etc/hosts file
+- name: Ensure hostname resolves to its management IP in /etc/hosts
   ansible.builtin.lineinfile:
     dest: /etc/hosts
-    regexp: "^127.0.0.1\\s+{{ inventory_hostname }}(\\s|$)"
+    regexp: "(^|\\s){{ inventory_hostname }}$"
     state: present
     line: "{{ hostvars[inventory_hostname]['ansible_host'] }} {{ inventory_hostname }}"
+    backup: true
+  tags: [hosts]
 
 - name: Install Proxmox
   ansible.builtin.include_tasks: install_proxmox.yml
+  tags: [proxmox]
 
 - name: Distribute ssh keys
   ansible.builtin.include_tasks: ssh_setup.yml
+  tags: [ssh]

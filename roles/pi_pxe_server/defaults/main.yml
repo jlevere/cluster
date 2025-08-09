@@ -1,3 +1,8 @@
 pi_pxe_server_tar: "https://deb.debian.org/debian/dists/bookworm/main/installer-amd64/current/images/netboot/netboot.tar.gz"
-pi_pxe_server_tar_checksum: "sha256:3429fa77a3823da5bfb9235a956d8b89b181999f2e23a6a4194c4379630106de"
+pi_pxe_server_tar_checksum: "sha256:6608bec07844414548243064858009184992eaa3710c0431b6fe4bc8c3ee706f"
 pi_pxe_server_working_dir: "/opt/pxe"
+pi_pxe_proxy_dhcp: false
+# Optional override for next-server. Defaults to host primary IPv4 address.
+# pi_pxe_next_server_ip: "192.0.2.10"
+# Optional override for interface to bind dnsmasq
+# pi_pxe_listen_interface: "eth0"

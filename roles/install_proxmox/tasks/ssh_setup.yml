@@ -1,4 +1,13 @@
-- name: Copy private key to cluster nodes
+- name: Ensure .ssh exists for root on target nodes
+  ansible.builtin.file:
+    path: "/root/.ssh"
+    state: directory
+    mode: "0700"
+  delegate_to: "{{ item }}"
+  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
+  become: true
+
+- name: Copy private key to cluster nodes (root)
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/keys/cluster_key"
     dest: "/root/.ssh/cluster_key"
@@ -7,16 +16,28 @@
   with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
   become: true
 
-- name: Copy private key to cluster nodes
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/keys/cluster_key"
-    dest: "/home/{{ansible_user}}/.ssh/cluster_key"
-    mode: "0600"
+- name: Ensure .ssh exists for normal user on target nodes
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.ssh"
+    state: directory
+    mode: "0700"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
   delegate_to: "{{ item }}"
   with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
-  become: false
-  tags:
-    - copy-id
+  become: true
+
+- name: Copy private key to cluster nodes (user)
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/keys/cluster_key"
+    dest: "/home/{{ ansible_user }}/.ssh/cluster_key"
+    mode: "0600"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+  delegate_to: "{{ item }}"
+  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
+  become: true
+  tags: [copy-id]
 
 - name: Slurp pub key
   ansible.builtin.slurp:
@@ -32,7 +53,7 @@
     state: present
   delegate_to: "{{ item }}"
   with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
-  become: false
+  become: true
 
 - name: Authorized keys root
   ansible.posix.authorized_key:
@@ -53,11 +74,11 @@
   ansible.builtin.file:
     path: ~/.ssh/known_hosts
     state: touch
-    mode: '0644'
+    mode: "0644"
   become: false
 
 - name: Keyscan known_hosts
-  ansible.builtin.shell: "ssh-keyscan -t ed25519 -H {{ hostvars[item].ansible_host }} >> ~/.ssh/known_hosts"
+  ansible.builtin.shell: "ssh-keyscan -T 5 -t ed25519 -H {{ hostvars[item].ansible_host }} >> ~/.ssh/known_hosts"
   loop: "{{ groups['cluster'] }}"
   when: hostvars[item].ansible_host is defined
   become: false

@@ -1,21 +1,19 @@
-- name: Check cluster status
-  ansible.builtin.shell: pvecm status | grep -e "^Node ID"
+- name: Check if node is already in a cluster
+  ansible.builtin.shell: pvecm status | grep -E "^Cluster information|^Node ID"
   register: cluster_status
   ignore_errors: true
-  changed_when: False
-  when: inventory_hostname != 'machine0'
+  changed_when: false
 
-- name: Debug cluster status
-  ansible.builtin.debug:
-    msg: "{{ inventory_hostname }} cluster status: {{ cluster_status.stdout }}"
-  when: inventory_hostname != 'machine0'
+- name: Determine bootstrap node
+  ansible.builtin.set_fact:
+    proxmox_bootstrap: "{{ (ansible_play_hosts_all | first) }}"
 
-- name: Create cluster on the initial node
+- name: Create cluster on the bootstrap node
   ansible.builtin.command:
     cmd: "pvecm create {{ config_proxmox_cluster_name }}"
-  when: inventory_hostname == 'machine0' and cluster_status.rc == 1
+  when: inventory_hostname == proxmox_bootstrap and cluster_status.rc != 0
 
 - name: Add node to cluster
   ansible.builtin.command:
-    cmd: "pvecm add {{ groups['cluster']['machine0']['ansible_host'] }}"
-  when: inventory_hostname != 'machine0' and cluster_status.rc == 0
+    cmd: "pvecm add {{ hostvars[proxmox_bootstrap].ansible_host }}"
+  when: inventory_hostname != proxmox_bootstrap and cluster_status.rc == 0

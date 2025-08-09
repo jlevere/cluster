@@ -30,6 +30,7 @@
             mkpasswd
             go-task
             kubernetes-helm
+            kubeseal
           ]);
       };
     });

@@ -11,6 +11,9 @@
   hosts: pi0
   become: true
   gather_facts: true
+  vars:
+    # Enable ProxyDHCP so we coexist with the router's DHCP
+    pi_pxe_proxy_dhcp: true
   roles:
     - pi_pxe_server
 
