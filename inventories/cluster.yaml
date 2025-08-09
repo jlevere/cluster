@@ -1,7 +1,7 @@
 pi:
   hosts:
     pi0:
-      ansible_host: 192.168.88.9
+      ansible_host: 192.168.1.9
       ansible_user: "pi"
       mac: "DC:A6:32:D0:06:04"
       ansible_python_interpreter: /usr/bin/python3.11
@@ -9,43 +9,25 @@ pi:
 cluster:
   hosts:
     machine0:
-      ansible_host: 192.168.88.10
+      ansible_host: 192.168.1.10
       ansible_user: "debian"
       mac: "a0:8c:fd:e6:2f:65"
       ansible_python_interpreter: /usr/bin/python3.11
-      mcx:
-        enp1s0: "24:8a:07:d2:c6:91"
-        enp1s0d1: "24:8a:07:d2:c6:92"
-      static_ips:
-        enp1s0: "192.168.1.1/30"
-        enp1s0d1: "192.168.2.1/30"
+
     machine1:
-      ansible_host: 192.168.88.11
+      ansible_host: 192.168.1.11
       ansible_user: "debian"
       mac: "18:60:24:88:21:44"
       ansible_python_interpreter: /usr/bin/python3.11
-      mcx:
-        enp1s0: "24:8a:07:d2:e6:71"
-        enp1s0d1: "24:8a:07:d2:e6:72"
-      static_ips:
-        enp1s0: "192.168.1.2/30"
-        enp1s0d1: "192.168.3.1/30"
+
     machine2:
-      ansible_host: 192.168.88.12
+      ansible_host: 192.168.1.12
       ansible_user: "debian"
       mac: "40:b0:34:43:a8:b3"
       ansible_python_interpreter: /usr/bin/python3.11
-      mcx:
-        enp1s0: "24:8a:07:73:68:71"
-        enp1s0d1: "24:8a:07:73:68:72"
-      static_ips:
-        enp1s0: "192.168.2.2/30"
-        enp1s0d1: "192.168.3.2/30"
 
-kube:
-  hosts:
-    k0:
-      ansible_host: 192.168.88.20
+    machine3:
+      ansible_host: 192.168.1.13
       ansible_user: "debian"
       mac: "54:bf:64:76:26:7e"
       ansible_python_interpreter: /usr/bin/python3.11
