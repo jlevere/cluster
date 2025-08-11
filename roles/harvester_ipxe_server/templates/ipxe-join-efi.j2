@@ -1,0 +1,20 @@
+#!ipxe
+# Free any previously loaded images to avoid memory/UEFI handover issues
+imgfree
+
+# Load initrd with a stable name and boot the kernel with robust console/logging
+set mac ${net0/mac:hexhyp}
+echo Using JOIN config: http://{{ ansible_default_ipv4.address }}/config-join-${mac}.yaml
+sleep 2
+initrd --name {{ harvester_ipxe_server_initrd_name }} http://{{ ansible_default_ipv4.address }}/{{ harvester_ipxe_server_initrd_name }}
+kernel http://{{ ansible_default_ipv4.address }}/{{ harvester_ipxe_server_kernel_name }} \
+  initrd={{ harvester_ipxe_server_initrd_name }} \
+  ip=dhcp rd.neednet=1 rd.net.dhcp.retry=20 net.ifnames=1 rd.cos.disable rd.noverifyssl \
+  console=tty1{% if harvester_ipxe_server_serial_console %} console={{ harvester_ipxe_server_serial_console }}{% endif %} \
+  root=live:http://{{ ansible_default_ipv4.address }}/{{ harvester_ipxe_server_rootfs_name }} \
+  harvester.install.automatic=true \
+  harvester.install.mode=join \
+  harvester.install.config_url=http://{{ ansible_default_ipv4.address }}/config-join-${mac}.yaml{% if harvester_ipxe_server_skip_checks %} \
+  harvester.install.skipchecks=true{% endif %} \
+  loglevel=6 panic=60
+boot

@@ -11,7 +11,7 @@ cluster:
     machine0:
       ansible_host: 192.168.1.10
       ansible_user: "debian"
-      mac: "a0:8c:fd:e6:2f:65"
+      mac: "18:c0:4d:6c:7d:68"
       ansible_python_interpreter: /usr/bin/python3.11
 
     machine1:

@@ -1,0 +1,8 @@
+#!ipxe
+# Fallback launcher for chainloaded iPXE
+# Try DHCP-provided boot filename (dnsmasq hands out ipxe-create-efi or ipxe-join-efi for user-class iPXE)
+dhcp || shell
+imgfree
+echo DHCP filename: ${filename}
+sleep 1
+chain ${filename} || chain http://{{ ansible_default_ipv4.address }}/ipxe-create-efi || chain http://{{ ansible_default_ipv4.address }}/ipxe-join-efi || shell

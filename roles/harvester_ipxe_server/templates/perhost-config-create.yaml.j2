@@ -1,0 +1,43 @@
+scheme_version: 1
+token: {{ harvester_ipxe_server_token }}
+os:
+  hostname: {{ item }}
+{% if harvester_ipxe_server_ssh_authorized_keys|length > 0 %}
+  ssh_authorized_keys:
+{% for k in harvester_ipxe_server_ssh_authorized_keys %}
+    - {{ k | quote }}
+{% endfor %}
+{% else %}
+  ssh_authorized_keys: []
+{% endif %}
+  password: {{ harvester_ipxe_server_password }}
+{% if harvester_ipxe_server_ntp_servers|length > 0 %}
+  ntp_servers:
+{% for ntp in harvester_ipxe_server_ntp_servers %}
+    - {{ ntp }}
+{% endfor %}{% endif %}
+{% if harvester_ipxe_server_dns_nameservers|length > 0 %}
+  dns_nameservers:
+{% for ns in harvester_ipxe_server_dns_nameservers %}
+    - {{ ns }}
+{% endfor %}
+{% endif %}
+install:
+  mode: create
+{% if harvester_ipxe_server_mgmt_interfaces|length > 0 %}
+  management_interface:
+    interfaces:
+{% for iface in harvester_ipxe_server_mgmt_interfaces %}
+      - name: {{ iface }}
+{% endfor %}
+    default_route: true
+    method: dhcp
+    bond_options:
+      mode: {{ harvester_ipxe_server_bond_options.mode }}
+      miimon: {{ harvester_ipxe_server_bond_options.miimon }}
+{% endif %}
+  device: {{ harvester_ipxe_server_install_device }}
+  iso_url: http://{{ ansible_default_ipv4.address }}/{{ harvester_ipxe_server_iso_name }}
+  vip: {{ harvester_ipxe_server_vip }}
+  vip_mode: {{ harvester_ipxe_server_vip_mode }}
+  {% if harvester_ipxe_server_vip_hw_addr %}vip_hw_addr: {{ harvester_ipxe_server_vip_hw_addr }}{% endif %}

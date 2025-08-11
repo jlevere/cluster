@@ -1,0 +1,92 @@
+harvester_ipxe_server_version: "v1.5.0"
+harvester_ipxe_server_release_base_url: "https://releases.rancher.com/harvester"
+
+harvester_ipxe_server_working_dir: "/opt/harvester-ipxe"
+# ProxyDHCP: coexist with existing router DHCP
+harvester_ipxe_server_proxy_dhcp: true
+# Optional: override which interface dnsmasq binds to; defaults to ansible_default_ipv4.interface
+# harvester_ipxe_server_listen_interface: "eth0"
+
+# Harvester cluster settings
+harvester_ipxe_server_vip: "192.168.1.50"
+harvester_ipxe_server_vip_mode: "static" # or "dhcp"
+harvester_ipxe_server_token: "changeme-token"
+harvester_ipxe_server_password: "changeme-password"
+harvester_ipxe_server_ssh_authorized_keys: []
+harvester_ipxe_server_ntp_servers: []
+harvester_ipxe_server_dns_nameservers:
+  - "1.1.1.1"
+  - "8.8.8.8"
+
+# Optional OS config (see docs)
+harvester_ipxe_server_os_write_files: [] # list of dicts {encoding, content, owner, path, permissions}
+harvester_ipxe_server_os_modules: [] # list of strings
+harvester_ipxe_server_os_sysctls: {} # dict
+harvester_ipxe_server_os_environment: {} # dict
+harvester_ipxe_server_os_labels: {} # dict
+
+# Installer options
+harvester_ipxe_server_install_device: "/dev/sda"
+harvester_ipxe_server_install_data_disk: "" # e.g. /dev/sdb
+harvester_ipxe_server_install_force_efi: false
+harvester_ipxe_server_install_force_mbr: false
+harvester_ipxe_server_install_silent: false
+harvester_ipxe_server_install_poweroff: false
+harvester_ipxe_server_install_no_format: false
+harvester_ipxe_server_install_debug: false
+harvester_ipxe_server_install_tty: "" # e.g. ttyS0,115200n8
+harvester_ipxe_server_install_role: "" # e.g. management/worker (optional)
+harvester_ipxe_server_install_persistent_partition_size: "" # e.g. 150Gi
+harvester_ipxe_server_install_wipe_all_disks: false
+harvester_ipxe_server_install_wipe_disks_list: [] # list of device paths
+harvester_ipxe_server_install_with_net_images: false # renders install.with-net-images
+
+# Cluster networking (optional overrides)
+harvester_ipxe_server_cluster_pod_cidr: "" # e.g. 10.52.0.0/16
+harvester_ipxe_server_cluster_service_cidr: "" # e.g. 10.53.0.0/16
+harvester_ipxe_server_cluster_dns: "" # must be within service CIDR
+
+# Installer webhooks (optional)
+harvester_ipxe_server_install_webhooks: []
+
+# Management networking
+# If true, configure static management IPs for nodes using inventory IPs
+harvester_ipxe_server_use_static_mgmt: true
+harvester_ipxe_server_mgmt_prefix: 24
+harvester_ipxe_server_mgmt_gateway: "192.168.1.1"
+# Interfaces used for management in config; leave empty to let installer pick boot NIC
+harvester_ipxe_server_mgmt_interfaces: [] # list of interface names
+harvester_ipxe_server_mgmt_interfaces_def: [] # list of dicts {name, hwAddr}
+# Optional bonding options when multiple interfaces are specified
+harvester_ipxe_server_bond_options:
+  mode: balance-tlb
+  miimon: 100
+# System settings (only applied in create mode)
+harvester_ipxe_server_system_settings: {} # dict of key: string value
+# Optional: VIP MAC when vip_mode is dhcp
+harvester_ipxe_server_vip_hw_addr: ""
+# Optional: add an additional serial console, e.g. "ttyS1,115200n8"
+harvester_ipxe_server_serial_console: ""
+# Skip hardware checks during install (kernel param)
+harvester_ipxe_server_skip_checks: false
+
+# iPXE binaries
+# Separate variables for UEFI and BIOS NBPs
+harvester_ipxe_server_ipxe_efi_binary: "ipxe.efi"
+harvester_ipxe_server_ipxe_bios_binary: "undionly.kpxe"
+harvester_ipxe_server_ipxe_binary: "ipxe.efi"
+
+# How many nodes should be provisioned in CREATE mode (usually 1)
+harvester_ipxe_server_create_hosts_count: 1
+
+# Derived filenames
+harvester_ipxe_server_kernel_name: "harvester-{{ harvester_ipxe_server_version }}-vmlinuz-amd64"
+harvester_ipxe_server_initrd_name: "harvester-{{ harvester_ipxe_server_version }}-initrd-amd64"
+harvester_ipxe_server_rootfs_name: "harvester-{{ harvester_ipxe_server_version }}-rootfs-amd64.squashfs"
+harvester_ipxe_server_iso_name: "harvester-{{ harvester_ipxe_server_version }}-amd64.iso"
+
+# PXE menu/behavior
+harvester_ipxe_server_pxe_menu_enabled: true
+harvester_ipxe_server_pxe_prompt_text: "Network boot"
+harvester_ipxe_server_pxe_prompt_timeout: 3
+harvester_ipxe_server_pxe_localboot_entry: true

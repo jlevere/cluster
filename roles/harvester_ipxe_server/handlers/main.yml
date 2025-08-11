@@ -1,0 +1,5 @@
+- name: Restart ipxe services
+  community.docker.docker_compose_v2:
+    project_src: "{{ harvester_ipxe_server_working_dir }}"
+    state: restarted
+    build: never

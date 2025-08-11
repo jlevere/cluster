@@ -1,0 +1,35 @@
+- name: Install docker for IPXE server
+  hosts: pi0
+  become: true
+  gather_facts: true
+  vars:
+    docker_install_compose: true
+  roles:
+    - geerlingguy.docker
+
+- name: Start Harvester iPXE server
+  hosts: pi0
+  become: true
+  gather_facts: true
+  vars:
+    # Harvester iPXE server secrets
+    harvester_ipxe_server_token: "{{ lookup('file', 'keys/harvester_token') | trim }}"
+    harvester_ipxe_server_password: "{{ lookup('file', 'keys/pass') | trim }}"
+    harvester_ipxe_server_ssh_authorized_keys:
+      - "{{ lookup('file', 'keys/cluster_key.pub') | trim }}"
+
+    # Harvester iPXE server settings for this cluster
+    harvester_ipxe_server_proxy_dhcp: true
+    # VIP must be outside the router DHCP pool (100-254)
+    harvester_ipxe_server_vip: 192.168.1.50
+    harvester_ipxe_server_use_static_mgmt: true
+    harvester_ipxe_server_mgmt_gateway: 192.168.1.1
+    harvester_ipxe_server_mgmt_prefix: 24
+
+    harvester_ipxe_server_listen_interface: "eth0"
+    # Optional caching and behavior
+    harvester_ipxe_server_ntp_servers:
+      - 0.suse.pool.ntp.org
+      - 1.suse.pool.ntp.org
+  roles:
+    - harvester_ipxe_server

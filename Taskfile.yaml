@@ -118,6 +118,24 @@ tasks:
     cmds:
       - ansible-playbook --inventory inventories/cluster.yaml pxe_server.yaml -v
 
+  harvester_ipxe:
+    desc: Run Ansible playbook for Harvester iPXE server (reads secrets from keys/)
+    deps: [gen_ssh_keys, crypt_pass, gen_harvester_token]
+    cmds:
+      - ansible-playbook --inventory inventories/cluster.yaml harvester_ipxe_server.yaml -v
+
+  gen_harvester_token:
+    desc: Generate Harvester cluster token if missing
+    cmds:
+      - |
+        if [ ! -f "keys/harvester_token" ]; then
+          mkdir -p keys
+          head -c 32 /dev/urandom | base64 | tr -dc 'a-zA-Z0-9' | head -c 32 > keys/harvester_token
+          echo "Generated keys/harvester_token"
+        else
+          echo "Harvester token exists. Skipping generation."
+        fi
+
   base_prov:
     desc: Run Ansible playbook for base Debian provisioning
     cmds:

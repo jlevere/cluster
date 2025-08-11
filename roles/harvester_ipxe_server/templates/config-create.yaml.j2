@@ -1,0 +1,149 @@
+scheme_version: 1
+token: {{ harvester_ipxe_server_token }}
+os:
+  hostname: {{ (groups['cluster'] | sort | first) | default('node1') }}
+{% if harvester_ipxe_server_ssh_authorized_keys|length > 0 %}
+  ssh_authorized_keys:
+{% for k in harvester_ipxe_server_ssh_authorized_keys %}
+    - {{ k | quote }}
+{% endfor %}
+{% else %}
+  ssh_authorized_keys: []
+{% endif %}
+  password: {{ harvester_ipxe_server_password }}
+{% if harvester_ipxe_server_ntp_servers|length > 0 %}
+  ntp_servers:
+{% for ntp in harvester_ipxe_server_ntp_servers %}
+    - {{ ntp }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_dns_nameservers|length > 0 %}
+  dns_nameservers:
+{% for ns in harvester_ipxe_server_dns_nameservers %}
+    - {{ ns }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_write_files|length > 0 %}
+  write_files:
+{% for f in harvester_ipxe_server_os_write_files %}
+    -{% if f.encoding is defined %} encoding: {{ f.encoding | quote }}{% endif %}
+      {% if f.content is defined %}content: {{ f.content | to_nice_yaml(indent=6) | trim }}{% endif %}
+      {% if f.owner is defined %}owner: {{ f.owner | quote }}{% endif %}
+      {% if f.path is defined %}path: {{ f.path | quote }}{% endif %}
+      {% if f.permissions is defined %}permissions: {{ f.permissions | quote }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_modules|length > 0 %}
+  modules:
+{% for m in harvester_ipxe_server_os_modules %}
+    - {{ m }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_sysctls|length > 0 %}
+  sysctls:
+{% for k,v in harvester_ipxe_server_os_sysctls.items() %}
+    {{ k }}: {{ v | quote }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_environment|length > 0 %}
+  environment:
+{% for k,v in harvester_ipxe_server_os_environment.items() %}
+    {{ k }}: {{ v | quote }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_labels|length > 0 %}
+  labels:
+{% for k,v in harvester_ipxe_server_os_labels.items() %}
+    {{ k }}: {{ v | quote }}
+{% endfor %}
+{% endif %}
+install:
+  mode: create
+{% if harvester_ipxe_server_mgmt_interfaces|length > 0 %}
+  management_interface:
+    interfaces:
+{% for iface in harvester_ipxe_server_mgmt_interfaces %}
+      - name: {{ iface }}
+{% endfor %}
+{% for nic in harvester_ipxe_server_mgmt_interfaces_def %}
+      - name: {{ nic.name }}{% if nic.hwAddr is defined %}
+        hwAddr: {{ nic.hwAddr | quote }}{% endif %}
+{% endfor %}
+    default_route: true
+    method: dhcp
+    bond_options:
+      mode: {{ harvester_ipxe_server_bond_options.mode }}
+      miimon: {{ harvester_ipxe_server_bond_options.miimon }}
+{% endif %}
+  device: {{ harvester_ipxe_server_install_device }}
+  {% if harvester_ipxe_server_install_data_disk %}data_disk: {{ harvester_ipxe_server_install_data_disk }}
+  {% endif %}
+  iso_url: http://{{ ansible_default_ipv4.address }}/{{ harvester_ipxe_server_iso_name }}
+  {% if harvester_ipxe_server_install_force_efi %}force_efi: true
+  {% endif %}
+  {% if harvester_ipxe_server_install_force_mbr %}force_mbr: true
+  {% endif %}
+  {% if harvester_ipxe_server_install_silent %}silent: true
+  {% endif %}
+  {% if harvester_ipxe_server_install_poweroff %}poweroff: true
+  {% endif %}
+  {% if harvester_ipxe_server_install_no_format %}no_format: true
+  {% endif %}
+  {% if harvester_ipxe_server_install_debug %}debug: true
+  {% endif %}
+  {% if harvester_ipxe_server_install_tty %}tty: {{ harvester_ipxe_server_install_tty }}
+  {% endif %}
+  vip: {{ harvester_ipxe_server_vip }}
+  vip_mode: {{ harvester_ipxe_server_vip_mode }}
+  {% if harvester_ipxe_server_vip_hw_addr %}vip_hw_addr: {{ harvester_ipxe_server_vip_hw_addr }}{% endif %}
+  {% if harvester_ipxe_server_cluster_pod_cidr %}cluster_pod_cidr: {{ harvester_ipxe_server_cluster_pod_cidr }}
+  {% endif %}
+  {% if harvester_ipxe_server_cluster_service_cidr %}cluster_service_cidr: {{ harvester_ipxe_server_cluster_service_cidr }}
+  {% endif %}
+  {% if harvester_ipxe_server_cluster_dns %}cluster_dns: {{ harvester_ipxe_server_cluster_dns }}
+  {% endif %}
+  {% if harvester_ipxe_server_install_persistent_partition_size %}persistent_partition_size: {{ harvester_ipxe_server_install_persistent_partition_size }}
+  {% endif %}
+  {% if harvester_ipxe_server_install_role %}role: {{ harvester_ipxe_server_install_role }}
+  {% endif %}
+  {% if harvester_ipxe_server_install_wipe_all_disks %}wipe_all_disks: true
+  {% endif %}
+  {% if harvester_ipxe_server_install_wipe_disks_list|length > 0 %}
+  wipe_disks_list:
+{% for d in harvester_ipxe_server_install_wipe_disks_list %}
+    - {{ d }}
+{% endfor %}
+  {% endif %}
+  {% if harvester_ipxe_server_install_with_net_images %}with-net-images: true
+  {% endif %}
+  {% if harvester_ipxe_server_install_webhooks|length > 0 %}
+  webhooks:
+{% for w in harvester_ipxe_server_install_webhooks %}
+    - event: {{ w.event | upper }}
+      method: {{ w.method | upper }}
+      url: {{ w.url | quote }}
+      {% if w.insecure is defined %}insecure: {{ w.insecure | bool | to_yaml | trim }}
+      {% endif %}
+      {% if w.basicAuth is defined %}basicAuth:
+        {% if w.basicAuth.user is defined %}user: {{ w.basicAuth.user | quote }}{% endif %}
+        {% if w.basicAuth.password is defined %}password: {{ w.basicAuth.password | quote }}{% endif %}
+      {% endif %}
+      {% if w.headers is defined %}headers:
+{% for hk,hv in w.headers.items() %}
+        {{ hk }}:
+{% for hvv in (hv if hv is iterable and hv is not string else [hv]) %}
+          - {{ hvv | quote }}
+{% endfor %}
+{% endfor %}
+      {% endif %}
+      {% if w.payload is defined %}payload: |
+{{ w.payload | indent(8) }}
+      {% endif %}
+{% endfor %}
+  {% endif %}
+{% if harvester_ipxe_server_system_settings|length > 0 %}
+system_settings:
+{% for k,v in harvester_ipxe_server_system_settings.items() %}
+  {{ k }}: {{ v | string | to_json | quote }}
+{% endfor %}
+{% endif %}

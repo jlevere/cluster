@@ -1,0 +1,84 @@
+# Disable DNS
+port=0
+
+# Listen only on the specified interface to avoid conflicts
+interface={{ harvester_ipxe_server_listen_interface | default(ansible_default_ipv4.interface) }}
+bind-dynamic
+except-interface=lo
+
+# ========= DHCP (Proxy) =========
+{% if harvester_ipxe_server_proxy_dhcp %}
+# ProxyDHCP: only provide PXE options, do not allocate IPs
+{% if ansible_default_ipv4.network is defined and ansible_default_ipv4.netmask is defined %}
+dhcp-range={{ ansible_default_ipv4.network }},proxy,{{ ansible_default_ipv4.netmask }}
+{% endif %}
+{% else %}
+# Standalone (not recommended when you don't control router)
+dhcp-authoritative
+dhcp-option=1,{{ ansible_default_ipv4.netmask }}
+dhcp-option=3,{{ ansible_default_ipv4.gateway }}
+{% if ansible_dns is defined and ansible_dns.nameservers is defined and ansible_dns.nameservers|length > 0 %}
+dhcp-option=6,{{ ansible_dns.nameservers[0] }},1.1.1.1
+{% else %}
+dhcp-option=6,1.1.1.1
+{% endif %}
+dhcp-range={{ ansible_default_ipv4.network | ansible.utils.ipmath(10) }},{{ ansible_default_ipv4.broadcast | ansible.utils.ipmath(-10) }},{{ ansible_default_ipv4.netmask }},12h
+{% endif %}
+
+# ========= Arch detection =========
+# BIOS (0) and UEFI x86_64 (7/9/11) per DHCP option 93
+dhcp-match=set:bios,option:client-arch,0
+dhcp-match=set:efi-x86_64,option:client-arch,7
+dhcp-match=set:efi-x86_64,option:client-arch,9
+dhcp-match=set:efi-x86_64,option:client-arch,11
+
+# iPXE user class
+# When an iPXE ROM boots, it sends user-class "iPXE"
+dhcp-userclass=set:ipxe,iPXE
+
+# ========= Host tagging =========
+# Tag first N hosts for CREATE, rest for JOIN
+{% set harvester_hosts = ((groups['cluster'] | default([])) + (groups['kube'] | default([]))) | unique | sort %}
+{% for h in harvester_hosts %}
+{%   if hostvars[h] is defined and hostvars[h]['mac'] is defined %}
+{%     set idx = loop.index0 %}
+{%     if idx < harvester_ipxe_server_create_hosts_count | int %}
+dhcp-host={{ hostvars[h]['mac'] }},set:create
+{%     else %}
+dhcp-host={{ hostvars[h]['mac'] }},set:join
+{%     endif %}
+{%   endif %}
+{% endfor %}
+
+# ========= Boot files =========
+# Optional PXE menu & prompt to satisfy certain Intel PXE ROMs (PXE-E74 workaround)
+{% if harvester_ipxe_server_pxe_menu_enabled %}
+pxe-prompt="{{ harvester_ipxe_server_pxe_prompt_text }}",{{ harvester_ipxe_server_pxe_prompt_timeout }}
+{%   if harvester_ipxe_server_pxe_localboot_entry %}
+pxe-service=tag:bios,0,"Boot from local disk"
+pxe-service=tag:efi-x86_64,0,"Boot from local disk"
+{%   endif %}
+{% endif %}
+
+# BIOS chainload to iPXE (undionly.kpxe) and direct boot handout
+pxe-service=tag:bios,tag:!ipxe,X86PC,"iPXE (BIOS)",{{ harvester_ipxe_server_ipxe_bios_binary | default('undionly.kpxe') }}
+dhcp-boot=tag:bios,tag:!ipxe,{{ harvester_ipxe_server_ipxe_bios_binary | default('undionly.kpxe') }},,{{ ansible_default_ipv4.address }}
+
+# UEFI x64 chainload to iPXE (ipxe.efi) and direct boot handout
+pxe-service=tag:efi-x86_64,tag:!ipxe,X86-64_EFI,"iPXE (UEFI x64)",{{ harvester_ipxe_server_ipxe_efi_binary | default('ipxe.efi') }}
+dhcp-boot=tag:efi-x86_64,tag:!ipxe,{{ harvester_ipxe_server_ipxe_efi_binary | default('ipxe.efi') }},,{{ ansible_default_ipv4.address }}
+
+# Once in iPXE, deliver per-host mode scripts over HTTP
+# CREATE
+dhcp-boot=tag:ipxe,tag:create,http://{{ ansible_default_ipv4.address }}/ipxe-create-efi
+# JOIN
+dhcp-boot=tag:ipxe,tag:join,http://{{ ansible_default_ipv4.address }}/ipxe-join-efi
+
+# ========= TFTP =========
+enable-tftp
+tftp-root=/tftp
+
+# ========= Logging =========
+log-queries
+log-dhcp
+log-facility=-

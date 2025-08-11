@@ -1,0 +1,80 @@
+scheme_version: 1
+server_url: https://{{ harvester_ipxe_server_vip }}:443
+token: {{ harvester_ipxe_server_token }}
+os:
+  hostname: {{ item }}
+{% if harvester_ipxe_server_ssh_authorized_keys|length > 0 %}
+  ssh_authorized_keys:
+{% for k in harvester_ipxe_server_ssh_authorized_keys %}
+    - {{ k | quote }}
+{% endfor %}
+{% else %}
+  ssh_authorized_keys: []
+{% endif %}
+  password: {{ harvester_ipxe_server_password }}
+{% if harvester_ipxe_server_ntp_servers|length > 0 %}
+  ntp_servers:
+{% for ntp in harvester_ipxe_server_ntp_servers %}
+    - {{ ntp }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_dns_nameservers|length > 0 %}
+  dns_nameservers:
+{% for ns in harvester_ipxe_server_dns_nameservers %}
+    - {{ ns }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_write_files|length > 0 %}
+  write_files:
+{% for f in harvester_ipxe_server_os_write_files %}
+    -{% if f.encoding is defined %} encoding: {{ f.encoding | quote }}{% endif %}
+      {% if f.content is defined %}content: {{ f.content | to_nice_yaml(indent=6) | trim }}{% endif %}
+      {% if f.owner is defined %}owner: {{ f.owner | quote }}{% endif %}
+      {% if f.path is defined %}path: {{ f.path | quote }}{% endif %}
+      {% if f.permissions is defined %}permissions: {{ f.permissions | quote }}{% endif %}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_modules|length > 0 %}
+  modules:
+{% for m in harvester_ipxe_server_os_modules %}
+    - {{ m }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_sysctls|length > 0 %}
+  sysctls:
+{% for k,v in harvester_ipxe_server_os_sysctls.items() %}
+    {{ k }}: {{ v | quote }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_environment|length > 0 %}
+  environment:
+{% for k,v in harvester_ipxe_server_os_environment.items() %}
+    {{ k }}: {{ v | quote }}
+{% endfor %}
+{% endif %}
+{% if harvester_ipxe_server_os_labels|length > 0 %}
+  labels:
+{% for k,v in harvester_ipxe_server_os_labels.items() %}
+    {{ k }}: {{ v | quote }}
+{% endfor %}
+{% endif %}
+install:
+  mode: join
+{% if harvester_ipxe_server_mgmt_interfaces|length > 0 %}
+  management_interface:
+    interfaces:
+{% for iface in harvester_ipxe_server_mgmt_interfaces %}
+      - name: {{ iface }}
+{% endfor %}
+{% for nic in harvester_ipxe_server_mgmt_interfaces_def %}
+      - name: {{ nic.name }}{% if nic.hwAddr is defined %}
+        hwAddr: {{ nic.hwAddr | quote }}{% endif %}
+{% endfor %}
+    default_route: true
+    method: dhcp
+    bond_options:
+      mode: {{ harvester_ipxe_server_bond_options.mode }}
+      miimon: {{ harvester_ipxe_server_bond_options.miimon }}
+{% endif %}
+  device: {{ harvester_ipxe_server_install_device }}
+  iso_url: http://{{ ansible_default_ipv4.address }}/{{ harvester_ipxe_server_iso_name }}

@@ -1,0 +1,155 @@
+- name: Ensure working directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ harvester_ipxe_server_working_dir }}"
+    - "{{ harvester_ipxe_server_working_dir }}/configs"
+    - "{{ harvester_ipxe_server_working_dir }}/http"
+    - "{{ harvester_ipxe_server_working_dir }}/tftp"
+    - "{{ harvester_ipxe_server_working_dir }}/dnsmasq"
+
+- name: Copy container build files
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/{{ item }}"
+    dest: "{{ harvester_ipxe_server_working_dir }}/{{ item }}"
+    mode: "0644"
+  loop:
+    - "dnsmasq/Dockerfile"
+    - "http/Dockerfile"
+    - "docker-compose.yaml"
+  notify: Restart ipxe services
+
+- name: Template dnsmasq config
+  ansible.builtin.template:
+    src: "dnsmasq.conf.j2"
+    dest: "{{ harvester_ipxe_server_working_dir }}/configs/dnsmasq.conf"
+    mode: "0644"
+  notify: Restart ipxe services
+
+- name: Check if iPXE UEFI binary exists
+  ansible.builtin.stat:
+    path: "{{ harvester_ipxe_server_working_dir }}/tftp/{{ harvester_ipxe_server_ipxe_efi_binary }}"
+  register: ipxe_efi_stat
+
+- name: Check if iPXE BIOS binary exists
+  ansible.builtin.stat:
+    path: "{{ harvester_ipxe_server_working_dir }}/tftp/{{ harvester_ipxe_server_ipxe_bios_binary }}"
+  register: ipxe_bios_stat
+
+- name: Check if Harvester boot artifacts exist
+  ansible.builtin.stat:
+    path: "{{ harvester_ipxe_server_working_dir }}/http/{{ item }}"
+  loop:
+    - "{{ harvester_ipxe_server_kernel_name }}"
+    - "{{ harvester_ipxe_server_initrd_name }}"
+    - "{{ harvester_ipxe_server_rootfs_name }}"
+  register: boot_artifacts_stat
+
+- name: Check if Harvester ISO exists
+  ansible.builtin.command: test -f "{{ harvester_ipxe_server_working_dir }}/http/{{ harvester_ipxe_server_iso_name }}"
+  register: iso_stat
+  changed_when: false
+  failed_when: false
+
+- name: Download iPXE UEFI binary
+  ansible.builtin.get_url:
+    url: "http://boot.ipxe.org/{{ harvester_ipxe_server_ipxe_efi_binary }}"
+    dest: "{{ harvester_ipxe_server_working_dir }}/tftp/{{ harvester_ipxe_server_ipxe_efi_binary }}"
+    mode: "0644"
+  when: not ipxe_efi_stat.stat.exists
+
+- name: Download iPXE BIOS binary
+  ansible.builtin.get_url:
+    url: "http://boot.ipxe.org/{{ harvester_ipxe_server_ipxe_bios_binary }}"
+    dest: "{{ harvester_ipxe_server_working_dir }}/tftp/{{ harvester_ipxe_server_ipxe_bios_binary }}"
+    mode: "0644"
+  when: not ipxe_bios_stat.stat.exists
+
+- name: Download Harvester boot artifacts
+  ansible.builtin.get_url:
+    url: "{{ harvester_ipxe_server_release_base_url }}/{{ harvester_ipxe_server_version }}/{{ item }}"
+    dest: "{{ harvester_ipxe_server_working_dir }}/http/{{ item }}"
+    mode: "0644"
+  loop:
+    - "{{ harvester_ipxe_server_kernel_name }}"
+    - "{{ harvester_ipxe_server_initrd_name }}"
+    - "{{ harvester_ipxe_server_rootfs_name }}"
+  loop_control:
+    index_var: idx
+  when: not boot_artifacts_stat.results[idx].stat.exists
+
+- name: Download Harvester ISO (used by installer via iso_url)
+  ansible.builtin.get_url:
+    url: "{{ harvester_ipxe_server_release_base_url }}/{{ harvester_ipxe_server_version }}/{{ harvester_ipxe_server_iso_name }}"
+    dest: "{{ harvester_ipxe_server_working_dir }}/http/{{ harvester_ipxe_server_iso_name }}"
+    mode: "0644"
+  when: iso_stat.rc != 0
+
+- name: Template iPXE scripts (UEFI defaults)
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ harvester_ipxe_server_working_dir }}/http/{{ item.dest }}"
+    mode: "0644"
+  loop:
+    - { src: "ipxe-create-efi.j2", dest: "ipxe-create-efi" }
+    - { src: "ipxe-join-efi.j2", dest: "ipxe-join-efi" }
+  notify: Restart ipxe services
+
+- name: Install fallback autoexec.ipxe in HTTP root
+  ansible.builtin.template:
+    src: "autoexec.ipxe.j2"
+    dest: "{{ harvester_ipxe_server_working_dir }}/http/autoexec.ipxe"
+    mode: "0644"
+  notify: Restart ipxe services
+
+- name: Install fallback autoexec.ipxe in TFTP root
+  ansible.builtin.template:
+    src: "autoexec.ipxe.j2"
+    dest: "{{ harvester_ipxe_server_working_dir }}/tftp/autoexec.ipxe"
+    mode: "0644"
+  notify: Restart ipxe services
+
+- name: Build list of cluster hosts and mark create/join
+  ansible.builtin.set_fact:
+    harvester_cluster_hosts: "{{ (groups['cluster'] | default([])) | unique | sort }}"
+
+- name: Generate per-MAC CREATE config for first N hosts
+  ansible.builtin.template:
+    src: "perhost-config-create.yaml.j2"
+    dest: "{{ harvester_ipxe_server_working_dir }}/http/config-create-{{ hostvars[item]['mac'] | lower }}.yaml"
+    mode: "0644"
+  loop: "{{ harvester_cluster_hosts[0 : harvester_ipxe_server_create_hosts_count | int] }}"
+  when: hostvars[item]['mac'] is defined
+
+- name: Generate per-MAC JOIN config for remaining hosts
+  ansible.builtin.template:
+    src: "perhost-config-join.yaml.j2"
+    dest: "{{ harvester_ipxe_server_working_dir }}/http/config-join-{{ hostvars[item]['mac'] | lower }}.yaml"
+    mode: "0644"
+  loop: "{{ harvester_cluster_hosts[harvester_ipxe_server_create_hosts_count | int :] }}"
+  when: hostvars[item]['mac'] is defined
+
+- name: Install docker compose sdk
+  ansible.builtin.package:
+    name: docker-compose
+    state: present
+  tags: [packages]
+
+- name: Ensure python docker sdk present
+  ansible.builtin.package:
+    name: python3-docker
+    state: present
+  tags: [packages]
+
+- name: Start services
+  community.docker.docker_compose_v2:
+    project_src: "{{ harvester_ipxe_server_working_dir }}"
+    state: present
+    build: never
+    recreate: "auto"
+
+# Apply any pending restarts from earlier template/copy changes now
+- name: Apply handlers now
+  ansible.builtin.meta: flush_handlers
