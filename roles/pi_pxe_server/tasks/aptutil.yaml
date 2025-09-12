@@ -1,15 +1,16 @@
-- name: Copying configs
-  ansible.builtin.copy:
-    src: "files/aptutil/aptutil.toml"
-    dest: "{{ pi_pxe_server_working_dir }}/aptutil/"
-    mode: "0644"
-
-- name: Create cache and meta dirs
+- name: Create aptutil, cache and meta dirs
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: "0755"
     owner: "root"
   loop:
+    - "{{ pi_pxe_server_working_dir }}/aptutil/"
     - "{{ pi_pxe_server_working_dir }}/aptutil/meta/"
     - "{{ pi_pxe_server_working_dir }}/aptutil/cache/"
+
+- name: Copy aptutil config
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/aptutil/aptutil.toml"
+    dest: "{{ pi_pxe_server_working_dir }}/aptutil/aptutil.toml"
+    mode: "0644"

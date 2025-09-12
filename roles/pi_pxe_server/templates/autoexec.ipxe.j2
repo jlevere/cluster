@@ -1,0 +1,20 @@
+#!ipxe
+# Fallback/primary iPXE script to chain Debian installer
+
+set server-ip {{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}
+
+# Try DHCP and use the provided filename first
+ dhcp || shell
+ imgfree
+
+# Netboot Debian kernel/initrd are served by HTTP role
+set debian_kernel http://${server-ip}/linux
+set debian_initrd http://${server-ip}/initrd.gz
+
+# Preseed per-MAC file (lowercase MAC from iPXE)
+set mac ${net0/mac}
+set maclc ${mac}
+
+kernel ${debian_kernel} auto=true url=http://${server-ip}/configs/${maclc}.cfg priority=critical vga=normal --- quiet
+initrd ${debian_initrd}
+boot

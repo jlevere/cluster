@@ -29,13 +29,30 @@ dhcp-host={{ hostvars[host]['mac'] }},{{ hostvars[host]['ansible_host'] }},{{ ho
 
 # ======== PXE config =============
 
-# Match Arch Types efi x86 and x64
+# Arch detection
+dhcp-match=set:bios,option:client-arch,0
 dhcp-match=set:efi-x86_64,option:client-arch,7
 dhcp-match=set:efi-x86_64,option:client-arch,9
+dhcp-match=set:efi-x86_64,option:client-arch,11
 
-# Set the Boot file based on the tag from above
-# Also set next-server explicitly to this machine's IP (can be overridden)
-dhcp-boot=tag:efi-x86_64,grubx64.efi,,{{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}
+# iPXE user class
+dhcp-userclass=set:ipxe,iPXE
+
+# Optional PXE prompt to satisfy picky firmwares
+pxe-prompt="Network boot",3
+pxe-service=tag:bios,0,"Boot from local disk"
+pxe-service=tag:efi-x86_64,0,"Boot from local disk"
+
+# BIOS chainload to iPXE
+pxe-service=tag:bios,tag:!ipxe,X86PC,"iPXE (BIOS)",undionly.kpxe
+dhcp-boot=tag:bios,tag:!ipxe,undionly.kpxe,,{{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}
+
+# UEFI x64 chainload to iPXE
+pxe-service=tag:efi-x86_64,tag:!ipxe,X86-64_EFI,"iPXE (UEFI x64)",ipxe.efi
+dhcp-boot=tag:efi-x86_64,tag:!ipxe,ipxe.efi,,{{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}
+
+# Once in iPXE, hand off to HTTP autoexec which does Debian installer
+dhcp-boot=tag:ipxe,http://{{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}/autoexec.ipxe
 
 # ========= TFTP config ============
 

@@ -15,6 +15,8 @@
     - "{{ pi_pxe_server_working_dir }}/configs"
     - "{{ pi_pxe_server_working_dir }}/dnsmasq"
     - "{{ pi_pxe_server_working_dir }}/http"
+    - "{{ pi_pxe_server_working_dir }}/http/configs"
+    - "{{ pi_pxe_server_working_dir }}/tftp"
 
 - name: Copy in docker configs
   ansible.builtin.copy:
@@ -29,24 +31,44 @@
 - name: Set up netboot
   ansible.builtin.include_tasks: netboot.yaml
 
+- name: Check iPXE UEFI binary
+  ansible.builtin.stat:
+    path: "{{ pi_pxe_server_working_dir }}/tftp/ipxe.efi"
+  register: ipxe_efi_stat
+
+- name: Download iPXE UEFI binary
+  ansible.builtin.get_url:
+    url: "http://boot.ipxe.org/ipxe.efi"
+    dest: "{{ pi_pxe_server_working_dir }}/tftp/ipxe.efi"
+    mode: "0644"
+  when: not ipxe_efi_stat.stat.exists
+
+- name: Check iPXE BIOS binary
+  ansible.builtin.stat:
+    path: "{{ pi_pxe_server_working_dir }}/tftp/undionly.kpxe"
+  register: ipxe_bios_stat
+
+- name: Download iPXE BIOS binary
+  ansible.builtin.get_url:
+    url: "http://boot.ipxe.org/undionly.kpxe"
+    dest: "{{ pi_pxe_server_working_dir }}/tftp/undionly.kpxe"
+    mode: "0644"
+  when: not ipxe_bios_stat.stat.exists
+
 - name: Template Dnsmasq config
   ansible.builtin.template:
     src: dnsmasq.conf.j2
     dest: "{{ pi_pxe_server_working_dir }}/configs/dnsmasq.conf"
     mode: "0644"
 
-- name: Gen grub config
+- name: Install fallback autoexec.ipxe in HTTP and TFTP roots
   ansible.builtin.template:
-    src: grub.cfg.j2
-    dest: "{{ pi_pxe_server_working_dir }}/configs/grub.cfg"
+    src: autoexec.ipxe.j2
+    dest: "{{ item }}"
     mode: "0644"
-
-- name: Overwrite default grub config in netboot
-  ansible.builtin.copy:
-    src: "{{ pi_pxe_server_working_dir }}/configs/grub.cfg"
-    dest: "{{ pi_pxe_server_working_dir }}/debian-installer/amd64/grub/grub.cfg"
-    mode: "0644"
-    remote_src: true
+  loop:
+    - "{{ pi_pxe_server_working_dir }}/http/autoexec.ipxe"
+    - "{{ pi_pxe_server_working_dir }}/tftp/autoexec.ipxe"
 
 - name: Print MAC address of each host in the cluster
   ansible.builtin.debug:
@@ -57,7 +79,7 @@
 - name: Generate preseed for each machine
   ansible.builtin.template:
     src: preseed.cfg.j2
-    dest: "{{ pi_pxe_server_working_dir }}/configs/{{ hostvars[item]['mac'] }}.cfg"
+    dest: "{{ pi_pxe_server_working_dir }}/http/configs/{{ hostvars[item]['mac'] | lower }}.cfg"
     mode: "0644"
   loop: "{{ groups['cluster'] }}"
 
@@ -73,6 +95,22 @@
 
 - name: Set up apt cache
   ansible.builtin.include_tasks: aptutil.yaml
+
+- name: Copy Debian kernel and initrd to HTTP root for iPXE
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: "0644"
+    remote_src: true
+  loop:
+    - {
+        src: "{{ pi_pxe_server_working_dir }}/debian-installer/amd64/linux",
+        dest: "{{ pi_pxe_server_working_dir }}/http/linux",
+      }
+    - {
+        src: "{{ pi_pxe_server_working_dir }}/debian-installer/amd64/initrd.gz",
+        dest: "{{ pi_pxe_server_working_dir }}/http/initrd.gz",
+      }
 
 - name: Start PXE server
   community.docker.docker_compose_v2:
