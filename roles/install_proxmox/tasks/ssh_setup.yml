@@ -1,41 +1,41 @@
-- name: Ensure .ssh exists for root on target nodes
+---
+- name: Ensure .ssh exists for root
   ansible.builtin.file:
     path: "/root/.ssh"
     state: directory
     mode: "0700"
-  delegate_to: "{{ item }}"
-  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
   become: true
 
-- name: Copy private key to cluster nodes (root)
+- name: Copy private key for root
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/keys/cluster_key"
     dest: "/root/.ssh/cluster_key"
     mode: "0600"
-  delegate_to: "{{ item }}"
-  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
   become: true
 
-- name: Ensure .ssh exists for normal user on target nodes
+- name: Ensure root default key present (id_ed25519)
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/keys/cluster_key"
+    dest: "/root/.ssh/id_ed25519"
+    mode: "0600"
+  become: true
+
+- name: Ensure .ssh exists for normal user
   ansible.builtin.file:
     path: "/home/{{ ansible_user }}/.ssh"
     state: directory
     mode: "0700"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-  delegate_to: "{{ item }}"
-  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
   become: true
 
-- name: Copy private key to cluster nodes (user)
+- name: Copy private key for user
   ansible.builtin.copy:
     src: "{{ playbook_dir }}/keys/cluster_key"
     dest: "/home/{{ ansible_user }}/.ssh/cluster_key"
     mode: "0600"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
-  delegate_to: "{{ item }}"
-  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
   become: true
   tags: [copy-id]
 
@@ -46,39 +46,44 @@
   delegate_to: localhost
   become: false
 
-- name: Authorized keys debian
+- name: Authorized keys for user
   ansible.posix.authorized_key:
     user: "{{ ansible_user }}"
     key: "{{ ssh_public_key.content | b64decode }}"
     state: present
-  delegate_to: "{{ item }}"
-  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
   become: true
 
-- name: Authorized keys root
+- name: Authorized keys for root
   ansible.posix.authorized_key:
     user: "root"
     key: "{{ ssh_public_key.content | b64decode }}"
     state: present
-  delegate_to: "{{ item }}"
-  with_items: "{{ ansible_play_hosts | difference([inventory_hostname]) }}"
   become: true
 
-- name: Clear known_hosts file
-  ansible.builtin.file:
-    path: ~/.ssh/known_hosts
-    state: absent
-  become: false
-
-- name: Recreate known_hosts file
+- name: Ensure controller known_hosts exists
   ansible.builtin.file:
     path: ~/.ssh/known_hosts
     state: touch
     mode: "0644"
   become: false
 
-- name: Keyscan known_hosts
+- name: Keyscan controller known_hosts
   ansible.builtin.shell: "ssh-keyscan -T 5 -t ed25519 -H {{ hostvars[item].ansible_host }} >> ~/.ssh/known_hosts"
   loop: "{{ groups['cluster'] }}"
   when: hostvars[item].ansible_host is defined
+  failed_when: false
   become: false
+
+- name: Ensure root known_hosts exists
+  ansible.builtin.file:
+    path: /root/.ssh/known_hosts
+    state: touch
+    mode: "0644"
+  become: true
+
+- name: Keyscan root known_hosts
+  ansible.builtin.shell: "ssh-keyscan -T 5 -t ed25519 -H {{ hostvars[item].ansible_host }} >> /root/.ssh/known_hosts"
+  loop: "{{ groups['cluster'] }}"
+  when: hostvars[item].ansible_host is defined
+  failed_when: false
+  become: true

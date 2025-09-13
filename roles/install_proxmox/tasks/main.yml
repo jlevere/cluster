@@ -1,10 +1,13 @@
-- name: Ensure hostname resolves to its management IP in /etc/hosts
+---
+- name: Ensure cluster hostnames resolve in /etc/hosts
   ansible.builtin.lineinfile:
     dest: /etc/hosts
-    regexp: "(^|\\s){{ inventory_hostname }}$"
+    regexp: "(^|\\s){{ item }}$"
     state: present
-    line: "{{ hostvars[inventory_hostname]['ansible_host'] }} {{ inventory_hostname }}"
+    line: "{{ hostvars[item].ansible_host }} {{ item }}"
     backup: true
+  loop: "{{ groups['cluster'] }}"
+  when: hostvars[item].ansible_host is defined
   tags: [hosts]
 
 - name: Install Proxmox
@@ -14,3 +17,7 @@
 - name: Distribute ssh keys
   ansible.builtin.include_tasks: ssh_setup.yml
   tags: [ssh]
+
+- name: Create/join Proxmox cluster
+  ansible.builtin.include_tasks: cluster_create.yml
+  tags: [cluster]

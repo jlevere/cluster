@@ -112,15 +112,21 @@ tasks:
       - echo " Fleet Server logs"
       - kubectl logs -l agent.k8s.elastic.co/name=fleet-server -n elastic-system --tail=50
 
+  galaxy_install:
+    desc: Install Ansible Galaxy roles from requirements.yml into ./roles
+    cmds:
+      - ansible-galaxy role install -r requirements.yml -p roles
+      - ansible-galaxy collection install -r requirements.yml -p collections
+
   pxe_server:
     desc: Run Ansible playbook for PXE server configuration
-    deps: [gen_ssh_keys, crypt_pass]
+    deps: [gen_ssh_keys, crypt_pass, galaxy_install]
     cmds:
       - ansible-playbook --inventory inventories/cluster.yaml pxe_server.yaml -v
 
   harvester_ipxe:
     desc: Run Ansible playbook for Harvester iPXE server (reads secrets from keys/)
-    deps: [gen_ssh_keys, crypt_pass, gen_harvester_token]
+    deps: [gen_ssh_keys, crypt_pass, gen_harvester_token, galaxy_install]
     cmds:
       - ansible-playbook --inventory inventories/cluster.yaml harvester_ipxe_server.yaml -v
 

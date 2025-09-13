@@ -167,3 +167,5 @@ cython_debug/
 charts
 
 .ansible
+collections
+roles/geerlingguy.docker/

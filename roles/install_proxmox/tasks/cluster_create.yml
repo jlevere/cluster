@@ -1,3 +1,4 @@
+---
 - name: Check if node is already in a cluster
   ansible.builtin.shell: pvecm status | grep -E "^Cluster information|^Node ID"
   register: cluster_status
@@ -6,14 +7,61 @@
 
 - name: Determine bootstrap node
   ansible.builtin.set_fact:
-    proxmox_bootstrap: "{{ (ansible_play_hosts_all | first) }}"
+    proxmox_bootstrap: "{{ config_proxmox_bootstrap | default(ansible_play_hosts_all | first) }}"
 
-- name: Create cluster on the bootstrap node
+- name: Ensure pve-cluster service is running
+  ansible.builtin.systemd:
+    name: pve-cluster
+    state: started
+    enabled: true
+
+- name: Create cluster on the bootstrap node (idempotent)
   ansible.builtin.command:
     cmd: "pvecm create {{ config_proxmox_cluster_name }}"
+  args:
+    creates: /etc/pve/corosync.conf
   when: inventory_hostname == proxmox_bootstrap and cluster_status.rc != 0
 
-- name: Add node to cluster
+- name: Wait for corosync.conf on bootstrap
+  ansible.builtin.stat:
+    path: /etc/pve/corosync.conf
+  register: bootstrap_corosync
+  until: bootstrap_corosync.stat.exists
+  retries: 12
+  delay: 5
+  when: inventory_hostname == proxmox_bootstrap
+
+- name: Wait until bootstrap is ready (from joiners)
+  ansible.builtin.stat:
+    path: /etc/pve/corosync.conf
+  register: bootstrap_ready
+  until: bootstrap_ready.stat.exists
+  retries: 24
+  delay: 5
+  delegate_to: "{{ proxmox_bootstrap }}"
+  run_once: false
+  when: inventory_hostname != proxmox_bootstrap
+
+- name: Ensure joiner root known_hosts includes bootstrap
+  ansible.builtin.shell: "ssh-keyscan -T 5 -t ed25519 -H {{ hostvars[proxmox_bootstrap].ansible_host }} >> /root/.ssh/known_hosts"
+  when: inventory_hostname != proxmox_bootstrap
+  changed_when: true
+  failed_when: false
+  become: true
+
+- name: Join node to cluster
   ansible.builtin.command:
     cmd: "pvecm add {{ hostvars[proxmox_bootstrap].ansible_host }}"
-  when: inventory_hostname != proxmox_bootstrap and cluster_status.rc == 0
+  register: pvecm_add
+  until: pvecm_add.rc == 0
+  retries: 3
+  delay: 10
+  when: inventory_hostname != proxmox_bootstrap and cluster_status.rc != 0
+
+- name: Verify node is in cluster
+  ansible.builtin.shell: pvecm status | grep -E "^Node ID"
+  register: join_check
+  until: join_check.rc == 0
+  retries: 12
+  delay: 5
+  when: inventory_hostname != proxmox_bootstrap
