@@ -1,39 +1,37 @@
 {
   description = "A Nix-flake-based development environment";
 
-  inputs.nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
-
-  outputs = {
-    self,
-    nixpkgs,
-  }: let
-    supportedSystems = ["x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin"];
-
-    forEachSupportedSystem = f:
-      nixpkgs.lib.genAttrs supportedSystems (system:
-        f {
-          pkgs = import nixpkgs {inherit system;};
-        });
-  in {
-    devShells = forEachSupportedSystem ({pkgs}: {
-      default = pkgs.mkShell {
-        venvDir = ".venv";
-        packages = with pkgs;
-          [python312]
-          ++ (with pkgs.python312Packages; [
-            pip
-            venvShellHook
-            uv
-            kubectl
-            ansible-core
-            pkgs.ansible-lint
-            mkpasswd
-            go-task
-            kubernetes-helm
-            kubeseal
-            yamllint
-          ]);
-      };
-    });
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+    flake-utils.url = "github:numtide/flake-utils";
   };
+
+  outputs = { self, nixpkgs, flake-utils }:
+    flake-utils.lib.eachDefaultSystem
+      (system:
+        let
+          pkgs = import nixpkgs { inherit system; };
+        in {
+          devShells.default = pkgs.mkShell {
+            venvDir = ".venv";
+            packages =
+              (with pkgs; [
+                python312
+                openssl
+                kubectl
+                kubernetes-helm
+                kubeseal
+                yamllint
+                go-task
+                mkpasswd
+                uv
+                ansible-lint
+              ]) ++
+              (with pkgs.python312Packages; [
+                pip
+                venvShellHook
+                ansible-core
+              ]);
+          };
+        });
 }
