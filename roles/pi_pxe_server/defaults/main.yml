@@ -3,8 +3,7 @@ pi_pxe_server_tar_checksum: "sha256:2cc3a5c20f9605ac29ea3afb6376d55b14d827f1ac44
 pi_pxe_server_working_dir: "/opt/pxe"
 
 # Keep legacy vars for compatibility but prefer pi_pxe_server_* in role
-pi_pxe_proxy_dhcp: true
-pi_pxe_server_proxy_dhcp: "{{ pi_pxe_proxy_dhcp }}"
+pi_pxe_server_proxy_dhcp: "{{ pi_pxe_proxy_dhcp | default(true) }}"
 
 # Only serve DHCP to reserved hosts (standalone mode only)
 pi_pxe_server_known_only: false
@@ -12,3 +11,8 @@ pi_pxe_server_known_only: false
 # pi_pxe_next_server_ip: "192.0.2.10"
 # Optional override for interface to bind dnsmasq
 # pi_pxe_listen_interface: "eth0"
+
+# Default DNS resolvers for clients and installer when not specified per-host
+pi_pxe_server_nameservers:
+  - "1.1.1.1"
+  - "1.0.0.1"

@@ -28,7 +28,7 @@ d-i netcfg/disable_autoconfig boolean true
 d-i netcfg/choose_interface select auto
 d-i netcfg/use_dhcp boolean false
 d-i netcfg/dhcp_failed note
-d-i netcfg/get_nameservers string {{ hostvars[item]['nameservers'] | default(ansible_dns['nameservers'] | join(' '), true) | default('1.1.1.1', true) }}
+d-i netcfg/get_nameservers string {{ (hostvars[item]['nameservers'] | default(pi_pxe_server_nameservers, true)) | join(' ') }}
 d-i netcfg/get_ipaddress string {{ hostvars[item]['ansible_host'] }}
 d-i netcfg/get_netmask string {{ hostvars[item]['netmask'] | default(ansible_default_ipv4.netmask) }}
 d-i netcfg/get_gateway string {{ hostvars[item]['gateway'] | default(ansible_default_ipv4.gateway) }}
@@ -36,6 +36,11 @@ d-i netcfg/confirm_static boolean true
 
 d-i netcfg/get_hostname string {{ item }}
 d-i netcfg/get_domain string local
+
+# When using network preseeding (preseed/url), the installer initially uses DHCP to fetch this file.
+# Re-run netcfg so the static settings above take effect and are written to the target.
+# Ref: Debian Installer manual (network-preseeding workaround)
+d-i preseed/early_command string kill-all-dhcp; netcfg
 
 # ============== Bootloader ============
 
@@ -84,8 +89,10 @@ d-i apt-setup/security_proxy string
 
 ######### setup default packages to install ########
 
-tasksel tasksel/first multiselect standard, ssh-server
+tasksel tasksel/first multiselect standard
 d-i pkgsel/run_tasksel boolean false
+# Ensure OpenSSH server is installed so SSH is available post-install
+d-i pkgsel/include string openssh-server
 
 # ============= Misc ===================
 popularity-contest popularity-contest/participate boolean false
