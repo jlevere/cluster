@@ -7,9 +7,6 @@ dhcp
 isset ${net0/ip} || goto dhcp_failed
 imgfree
 
-# Prefer DHCP-provided next-server if available
-isset ${next-server} && set server-ip ${next-server}
-
 set mac ${net0/mac}
 set tries:int32 0
 
