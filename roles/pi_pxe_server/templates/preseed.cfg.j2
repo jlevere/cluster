@@ -70,12 +70,17 @@ d-i apt-setup/non-free boolean true
 d-i apt-setup/non-free-firmware boolean true
 d-i apt-setup/contrib boolean true
 
-# Use local apt proxy (aptutil)
+# Use local apt cache (aptutil) as the mirror directly
 d-i mirror/protocol string http
 d-i mirror/country string manual
-d-i mirror/http/hostname string deb.debian.org
+d-i mirror/http/hostname string {{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}:3142
 d-i mirror/http/directory string /debian
-d-i mirror/http/proxy string http://{{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}:3142
+d-i mirror/http/proxy string
+
+# Ensure security repository also uses the local cache
+d-i apt-setup/security_host string {{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}:3142
+d-i apt-setup/security_path string /debian-security
+d-i apt-setup/security_proxy string
 
 ######### setup default packages to install ########
 
@@ -92,6 +97,8 @@ d-i finish-install/keep-consoles boolean true
 # Configure sudo for automation and set up SSH key for {{ hostvars[item]['ansible_user'] }} user, also setup hostname
 d-i preseed/late_command string \
     in-target sed -i -E -e 's/%sudo[[:space:]]+ALL=\(ALL:ALL\)[[:space:]]+ALL/%sudo ALL=(ALL:ALL) NOPASSWD:ALL/' /etc/sudoers; \
+    in-target /usr/sbin/usermod -aG sudo {{ hostvars[item]['ansible_user'] }}; \
+    in-target /bin/systemctl enable ssh; \
     in-target mkdir -p /home/{{ hostvars[item]['ansible_user'] }}/.ssh; \
     in-target /bin/sh -c "echo '{{ ssh_public_key }}' >> /home/{{ hostvars[item]['ansible_user'] }}/.ssh/authorized_keys"; \
     in-target chown -R {{ hostvars[item]['ansible_user'] }}:{{ hostvars[item]['ansible_user'] }} /home/{{ hostvars[item]['ansible_user'] }}/.ssh/; \
