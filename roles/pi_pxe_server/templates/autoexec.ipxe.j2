@@ -1,20 +1,38 @@
 #!ipxe
-# Fallback/primary iPXE script to chain Debian installer
+# Minimal iPXE script to boot Debian installer with per-host preseed
 
 set server-ip {{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}
 
-# Try DHCP and use the provided filename first
- dhcp || shell
- imgfree
+dhcp
+isset ${net0/ip} || goto dhcp_failed
+imgfree
 
-# Netboot Debian kernel/initrd are served by HTTP role
-set debian_kernel http://${server-ip}/linux
-set debian_initrd http://${server-ip}/initrd.gz
+# Prefer DHCP-provided next-server if available
+isset ${next-server} && set server-ip ${next-server}
 
-# Preseed per-MAC file (lowercase MAC from iPXE)
 set mac ${net0/mac}
-set maclc ${mac}
+set tries:int32 0
 
-kernel ${debian_kernel} auto=true url=http://${server-ip}/configs/${maclc}.cfg priority=critical vga=normal --- quiet
-initrd ${debian_initrd}
+:fetch_installer
+kernel http://${server-ip}/linux auto=true \
+  preseed/url=http://${server-ip}/configs/${mac}.cfg \
+  ip=dhcp priority=critical vga=normal BOOTIF=01-${mac:hexhyp} --- quiet || goto fetch_retry
+initrd http://${server-ip}/initrd.gz || goto fetch_retry
 boot
+
+:fetch_retry
+iseq ${tries} 3 && goto fetch_failed
+set tries:int32 ${tries} + 1
+echo Retry ${tries} fetching installer images...
+sleep 2
+goto fetch_installer
+
+:fetch_failed
+echo Failed to fetch installer images after retries
+sleep 3
+exit
+
+:dhcp_failed
+echo DHCP failed; cannot obtain network configuration
+sleep 3
+exit

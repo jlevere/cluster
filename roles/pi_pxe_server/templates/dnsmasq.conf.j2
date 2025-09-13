@@ -8,7 +8,7 @@ except-interface=lo
 
 
 # ======== DHCP setup ==========
-{% if pi_pxe_proxy_dhcp | default(false) %}
+{% if pi_pxe_server_proxy_dhcp | default(false) %}
 # ProxyDHCP mode: another DHCP server hands out IPs; we only provide PXE options
 # Define the local subnet in proxy mode so we reply with boot options only
 dhcp-range={{ ansible_default_ipv4.network }},proxy,{{ ansible_default_ipv4.netmask }}
@@ -17,14 +17,17 @@ dhcp-range={{ ansible_default_ipv4.network }},proxy,{{ ansible_default_ipv4.netm
 dhcp-authoritative
 dhcp-option=1,{{ ansible_default_ipv4.netmask }}
 dhcp-option=3,{{ ansible_default_ipv4.gateway }}
-dhcp-option=6,{{ ansible_dns['nameservers'][0] }},1.1.1.1
+dhcp-option=6,{{ (ansible_dns.nameservers | default([])) | first | default('1.1.1.1') }},1.1.1.1
 
 # We're DHCP configuring on this range
 dhcp-range={{ ansible_default_ipv4.network | ansible.utils.ipmath(1) }},{{ ansible_default_ipv4.broadcast | ansible.utils.ipmath(-1) }},{{ ansible_default_ipv4.netmask }},12h
 
 {% for host in groups['cluster'] %}
-dhcp-host={{ hostvars[host]['mac'] }},{{ hostvars[host]['ansible_host'] }},{{ host }},30d
+dhcp-host={{ hostvars[host]['mac'] }},{{ hostvars[host]['ansible_host'] }},{{ host }},set:known,30d
 {% endfor %}
+{% if pi_pxe_server_known_only | default(false) %}
+dhcp-ignore=tag:!known
+{% endif %}
 {% endif %}
 
 # ======== PXE config =============

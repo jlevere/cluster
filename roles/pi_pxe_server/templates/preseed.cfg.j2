@@ -24,26 +24,26 @@ d-i passwd/user-password-crypted password {{ user_password_hash }}
 # =============== Network ==============
 
 d-i netcfg/disable_autoconfig boolean true
-d-i netcfg/choose_interface select enp0s0
-d-i netcfg/get_nameservers string 1.1.1.1
+# Auto-select the active NIC (robust across naming schemes)
+d-i netcfg/choose_interface select auto
+d-i netcfg/use_dhcp boolean false
+d-i netcfg/dhcp_failed note
+d-i netcfg/get_nameservers string {{ hostvars[item]['nameservers'] | default(ansible_dns['nameservers'] | join(' '), true) | default('1.1.1.1', true) }}
 d-i netcfg/get_ipaddress string {{ hostvars[item]['ansible_host'] }}
-d-i netcfg/get_netmask string {{ ansible_default_ipv4.netmask }}
-d-i netcfg/get_gateway string {{ ansible_default_ipv4.gateway }}
+d-i netcfg/get_netmask string {{ hostvars[item]['netmask'] | default(ansible_default_ipv4.netmask) }}
+d-i netcfg/get_gateway string {{ hostvars[item]['gateway'] | default(ansible_default_ipv4.gateway) }}
 d-i netcfg/confirm_static boolean true
 
 d-i netcfg/get_hostname string {{ item }}
+d-i netcfg/get_domain string local
 
 # ============== Bootloader ============
 
 d-i grub-installer/only_debian boolean true
 d-i grub-installer/with_other_os boolean true
 
-d-i grub-installer/bootdev string /dev/sda
 
 # ============== Disk ==================
-
-# set as uefi only
-d-i partman-efi/non_efi_system boolean true
 
 # confirm removing old lvms
 d-i partman-lvm/device_remove_lvm boolean true
@@ -53,41 +53,34 @@ d-i partman-md/device_remove_md boolean true # remove old raid
 d-i partman-auto/method string lvm
 d-i partman-auto-lvm/guided_size string max
 
+# all in one partition layout
+d-i partman-auto/choose_recipe select atomic
+
+# confirmations
 d-i partman/confirm boolean true
-d-i partman-lvm/confirm boolean true
 d-i partman/confirm_write_new_label boolean true
-d-i partman-lvm/confirm_nooverwrite boolean true
-
-d-i partman-auto/choose_recipe select atomic # all in one part
-
-d-i partman-partitioning/confirm_write_new_label boolean true
 d-i partman/choose_partition select finish
-d-i partman/confirm boolean true
 d-i partman/confirm_nooverwrite boolean true
+d-i partman-lvm/confirm boolean true
+d-i partman-lvm/confirm_nooverwrite boolean true
 
 
 # ============= Packages ===============
 d-i apt-setup/non-free boolean true
+d-i apt-setup/non-free-firmware boolean true
 d-i apt-setup/contrib boolean true
 
-
-########## adding local repos ############
-
-#d-i debian-installer/allow_unauthenticated boolean true
-
-d-i apt-setup/local0/repository string \
-       http://{{ hostvars['pi0']['ansible_host'] }}:3142/debian bookworm main
-d-i apt-setup/local0/source boolean true
-d-i apt-setup/local0/comment string Repository
-
-d-i apt-setup/local1/repository string \
-       http://{{ hostvars['pi0']['ansible_host'] }}:3142/security bookworm main
-d-i apt-setup/local1/source boolean true
-d-i apt-setup/local1/comment string Repository
+# Use local apt proxy (aptutil)
+d-i mirror/protocol string http
+d-i mirror/country string manual
+d-i mirror/http/hostname string deb.debian.org
+d-i mirror/http/directory string /debian
+d-i mirror/http/proxy string http://{{ pi_pxe_next_server_ip | default(ansible_default_ipv4.address) }}:3142
 
 ######### setup default packages to install ########
 
 tasksel tasksel/first multiselect standard, ssh-server
+d-i pkgsel/run_tasksel boolean false
 
 # ============= Misc ===================
 popularity-contest popularity-contest/participate boolean false

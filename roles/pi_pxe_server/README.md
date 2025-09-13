@@ -24,22 +24,26 @@ Local File Tree                           Container File Tree
 
 ```
 
-These are the files that the booting machine requests via tftp during boot with my configs:
+Boot flow overview:
 
 ```
-grubx64.efi
-debian-installer/amd64/grub/x86_64-efi/command.lst
-debian-installer/amd64/grub/x86_64-efi/fs.lst
-debian-installer/amd64/grub/x86_64-efi/crypto.lst
-debian-installer/amd64/grub/x86_64-efi/terminal.lst
-debian-installer/amd64/grub/grub.cfg
-linux
-initrd.gz
+Firmware (PXE) -> iPXE (undionly.kpxe or ipxe.efi via TFTP)
+              -> HTTP autoexec.ipxe
+              -> HTTP linux + initrd.gz (Debian installer)
+              -> preseed.cfg (HTTP) selected by client MAC
 ```
 
-It first pulls `grubx64.efi` because of this line in my dnsmasq config: `dhcp-boot=tag:efi-x86_64,grubx64.efi` which includes the path to look for.
+Notes:
 
-The `preseed.cfg` file is served by http in the nginx container
+- dnsmasq chainloads iPXE (BIOS: `undionly.kpxe`, UEFI x64: `ipxe.efi`). Once in iPXE, we fetch `autoexec.ipxe` over HTTP.
+- `autoexec.ipxe` DHCPs and boots the Debian installer with `preseed/url=http://<server>/configs/<MAC>.cfg`.
+- The `preseed.cfg` files are served over HTTP from the nginx container.
+- Package downloads go through `aptutil` (HTTP proxy on port 3142). The preseed sets `mirror/http/proxy` accordingly; upstream mirrors remain `deb.debian.org`.
+
+Optional hardening:
+
+- Set `pi_pxe_known_only: true` (standalone DHCP mode) to lease only to reserved hosts
+- Ensure UDP 67/68/69 and TCP 80 are allowed on the host firewall
 
 ## Requirements
 
@@ -77,7 +81,7 @@ Including an example of how to use your role (for instance, with variables passe
 
 ### ProxyDHCP mode (coexist with an existing router DHCP)
 
-If your router already provides DHCP and cannot be disabled, set `pi_pxe_proxy_dhcp: true` to make `dnsmasq` run in ProxyDHCP mode. In this mode, your router assigns IP addresses and this role only advertises PXE boot options (next-server and boot filename).
+If your router already provides DHCP and cannot be disabled, set `pi_pxe_proxy_dhcp: true` to make `dnsmasq` run in ProxyDHCP mode. In this mode, your router assigns IP addresses and this role only advertises PXE boot options (next-server, boot filename, and iPXE chain).
 
 Variables:
 
@@ -87,4 +91,4 @@ Variables:
 Notes:
 
 - Ensure UDP 67/68 (DHCP) and 4011 (PXE) are reachable between clients and this server. With Docker `network_mode: host` this is already handled.
-- Some BIOS/UEFI firmwares look for `next-server` and filename. This role sets `next-server` to `pi_pxe_next_server_ip` and filename to `grubx64.efi` for x86_64 UEFI clients.
+- Some BIOS/UEFI firmwares look for `next-server` and filename. This role sets `next-server` to `pi_pxe_next_server_ip` and chainloads iPXE (`undionly.kpxe` for BIOS, `ipxe.efi` for UEFI x64), which then pulls the HTTP script.

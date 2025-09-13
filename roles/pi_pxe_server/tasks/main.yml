@@ -76,12 +76,31 @@
   loop: "{{ groups['cluster'] }}"
   when: hostvars[item]['mac'] is defined
 
+- name: Assert required hostvars for each cluster host
+  ansible.builtin.assert:
+    that:
+      - hostvars[item]['mac'] is defined
+      - hostvars[item]['ansible_host'] is defined
+    fail_msg: "Missing required hostvars (mac, ansible_host) for {{ item }}"
+  loop: "{{ groups['cluster'] }}"
+
 - name: Generate preseed for each machine
   ansible.builtin.template:
     src: preseed.cfg.j2
     dest: "{{ pi_pxe_server_working_dir }}/http/configs/{{ hostvars[item]['mac'] | lower }}.cfg"
     mode: "0644"
   loop: "{{ groups['cluster'] }}"
+
+# Clean up legacy per-host iPXE and postinstall directories if present
+- name: Remove legacy http/ipxe directory
+  ansible.builtin.file:
+    path: "{{ pi_pxe_server_working_dir }}/http/ipxe"
+    state: absent
+
+- name: Remove legacy http/postinstall directory
+  ansible.builtin.file:
+    path: "{{ pi_pxe_server_working_dir }}/http/postinstall"
+    state: absent
 
 - name: Install docker sdk python
   ansible.builtin.apt:
@@ -103,14 +122,10 @@
     mode: "0644"
     remote_src: true
   loop:
-    - {
-        src: "{{ pi_pxe_server_working_dir }}/debian-installer/amd64/linux",
-        dest: "{{ pi_pxe_server_working_dir }}/http/linux",
-      }
-    - {
-        src: "{{ pi_pxe_server_working_dir }}/debian-installer/amd64/initrd.gz",
-        dest: "{{ pi_pxe_server_working_dir }}/http/initrd.gz",
-      }
+    - src: "{{ pi_pxe_server_working_dir }}/debian-installer/amd64/linux"
+      dest: "{{ pi_pxe_server_working_dir }}/http/linux"
+    - src: "{{ pi_pxe_server_working_dir }}/debian-installer/amd64/initrd.gz"
+      dest: "{{ pi_pxe_server_working_dir }}/http/initrd.gz"
 
 - name: Start PXE server
   community.docker.docker_compose_v2:

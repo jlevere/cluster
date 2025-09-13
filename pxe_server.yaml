@@ -13,7 +13,7 @@
   gather_facts: true
   vars:
     # Enable ProxyDHCP so we coexist with the router's DHCP
-    pi_pxe_proxy_dhcp: true
+    pi_pxe_server_proxy_dhcp: true
     pi_pxe_next_server_ip: "{{ ansible_default_ipv4.address }}"
     pi_pxe_listen_interface: "{{ ansible_default_ipv4.interface }}"
   roles:
